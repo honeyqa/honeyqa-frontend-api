@@ -10,8 +10,4 @@ module.exports = {
         crypto.randomBytes(32).toString('hex'), crypto.randomBytes(32).toString('hex'),
         crypto.randomBytes(32).toString('hex'), crypto.randomBytes(32).toString('hex')
     ],
-
-
-
-    ;
 }
