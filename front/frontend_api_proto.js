@@ -80,6 +80,7 @@ app.get('/project/:apikey/weekly_appruncount', function(req, res){
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
 
+
 		res.header('Access-Control-Allow-Origin', '*');
 	 	
 	 	var result = new Object();
@@ -102,10 +103,59 @@ app.get('/project/:apikey/weekly_appruncount', function(req, res){
 	});
 });
 
+app.get('/project/:apikey/weekly_sessioncount', function(req, res){
+	var key = req.params.apikey;
+	var queryString = 'select count(*) weekly_sessioncount from sessions_h where apikey = ?';
+
+	connection.query(queryString, [key], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows[0];
+
+		res.send(result);
+	});
+});
+
+app.get('/project/:apikey/weekly_errorcount', function(req, res){
+	var key = req.params.apikey;
+	var queryString = 'select count(*) weekly_instancecount from error_instances_h where apikey = ?';
+
+	connection.query(queryString, [key], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows[0];
+
+		res.send(result);
+	});
+});
+
+
+app.get('/project/:apikey/weekly_instancecount', function(req, res){
+	var key = req.params.apikey;
+	var queryString = 'select count(*) weekly_instancecount from error_instances_h where apikey = ?';
+
+	connection.query(queryString, [key], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows[0];
+
+		res.send(result);
+	});
+});
+
 app.get('/project/:apikey/most/sessionbyappver', function(req, res){
 	var key = req.params.apikey;
 	var queryString = 'select appversion, count(*) as count ' +
-		'from sessions ' +
+		'from sessions_h ' +
 		'where apikey = ? and date >= now() - interval 1 week ' +
 		'group by appversion ' +
 		'order by count(*) desc limit 1';
@@ -123,7 +173,7 @@ app.get('/project/:apikey/most/sessionbyappver', function(req, res){
 app.get('/project/:apikey/most/errorbyappver', function(req, res){
 	var key = req.params.apikey;
 	var queryString = 'select appversion, count(*) as count ' +
-		'from error_instances ' +
+		'from error_instances_h ' +
 		'where apikey = ? and date >= now() - interval 1 week ' +
 		'group by appversion ' +
 		'order by count(*) desc limit 1';
@@ -142,7 +192,7 @@ app.get('/project/:apikey/most/errorbyappver', function(req, res){
 app.get('/project/:apikey/most/errorbydevice', function(req, res){
 	var key = req.params.apikey;
 	var queryString = 'select device, count(*) as count ' +
-		'from error_instances ' +
+		'from error_instances_h ' +
 		'where apikey = ? and date >= now() - interval 1 week ' +
 		'group by device ' +
 		'order by count(*) desc limit 1';
@@ -161,7 +211,7 @@ app.get('/project/:apikey/most/errorbydevice', function(req, res){
 app.get('/project/:apikey/most/errorbysdkversion', function(req, res){
 	var key = req.params.apikey;
 	var queryString = 'select sdkversion, count(*) as count ' +
-		'from error_instances ' +
+		'from error_instances_h ' +
 		'where apikey = ? and date >= now() - interval 1 week ' +
 		'group by sdkversion ' +
 		'order by count(*) desc limit 1';
@@ -180,7 +230,7 @@ app.get('/project/:apikey/most/errorbysdkversion', function(req, res){
 app.get('/project/:apikey/most/errorbycountry', function(req, res){
 	var key = req.params.apikey;
 	var queryString = 'select country, count(*) as count ' +
-		'from error_instances ' +
+		'from error_instances_h ' +
 		'where apikey = ? and date >= now() - interval 1 week ' +
 		'group by country ' +
 		'order by count(*) desc limit 1';
@@ -199,7 +249,7 @@ app.get('/project/:apikey/most/errorbycountry', function(req, res){
 app.get('/project/:apikey/most/errorbyclassname', function(req, res){
 	var key = req.params.apikey;
 	var queryString = 'select lastactivity, count(*) as count ' +
-		'from error_instances ' +
+		'from error_instances_h ' +
 		'where apikey = ? and date >= now() - interval 1 week ' +
 		'group by lastactivity ' +
 		'order by count(*) desc limit 1';
@@ -220,10 +270,10 @@ app.get('/project/:apikey/errors', function(req, res){
 	res.header('Access-Control-Allow-Origin', '*');
 
 	var key = req.params.apikey;
-	var queryString = 'select id, rank, num_of_instance, error_name, error_classname, linenum, status, update_date ' +
-		'from errors ' +
-		'where apikey = ? and (status = \'Open\' or status = \'New\') ' +
-		'order by rank, num_of_instance desc';
+	var queryString = 'select id, rank, num_of_instances, error_name, error_classname, linenum, status, update_date ' +
+		'from errorsh ' +
+		'where apikey = 547 and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
+		'order by rank, num_of_instances desc';
 
 	connection.query(queryString, [key], function (err, rows, fields) {
 		if (err) throw err;
@@ -239,7 +289,7 @@ app.get('/project/:apikey/errors', function(req, res){
 				function(callback){
 					element.error_id = rows[i].id;
 					element.rank = rows[i].rank;
-					element.num_of_instance = rows[i].num_of_instance;
+					element.num_of_instance = rows[i].num_of_instances;
 					element.error_name = rows[i].error_name;
 					element.error_classname = rows[i].error_classname;
 					element.linenum = rows[i].linenum;
@@ -250,7 +300,7 @@ app.get('/project/:apikey/errors', function(req, res){
 
 					//tag 정보 추가
 				function(index, element, callback){
-					var queryString = 'select tag from tags where error_id = ?';
+					var queryString = 'select tag from tags where iderror = ?';
 					connection.query(queryString, [element.error_id], function(err, rows, fields){
 						if(rows.length != 0){
 							element.tags = rows;
@@ -279,7 +329,7 @@ app.get('/project/:apikey/filters', function(req, res){
 
 	async.waterfall([
 		function(callback){
-			var queryString = 'select appversion, count(*) as count from error_instances where apikey = ? group by appversion order by count desc';
+			var queryString = 'select appversion, count(*) as count from error_instances_h where apikey = ? group by appversion order by count desc';
 			var key = req.params.apikey;
 			var result = new Object;
 
@@ -289,7 +339,7 @@ app.get('/project/:apikey/filters', function(req, res){
 			});
 		},
 		function(result, callback){
-			var queryString = 'select device, count(*) as count from error_instances where apikey = ? group by device order by count desc';
+			var queryString = 'select device, count(*) as count from error_instances_h where apikey = ? group by device order by count desc';
 			var key = req.params.apikey;
 
 			connection.query(queryString, [key], function(err, rows, fields){
@@ -299,7 +349,7 @@ app.get('/project/:apikey/filters', function(req, res){
 
 		},
 		function(result, callback){
-			var queryString = 'select sdkversion, count(*) as count from error_instances where apikey = ? group by sdkversion order by count desc';
+			var queryString = 'select sdkversion, count(*) as count from error_instances_h where apikey = ? group by sdkversion order by count desc';
 			var key = req.params.apikey;
 
 			connection.query(queryString, [key], function(err, rows, fields){
@@ -308,34 +358,34 @@ app.get('/project/:apikey/filters', function(req, res){
 			});
 		},
 		function(result, callback){
-			var queryString = 'select country, count(*) as count from error_instances where apikey = ? group by country order by count desc';
+			var queryString = 'select country, count(*) as count from error_instances_h where apikey = ? group by country order by count desc';
 			var key = req.params.apikey;
 
 			connection.query(queryString, [key], function(err, rows, fields){
 				result.filter_countries = rows;
 				callback(null, result);
 			});
-		},
-
-		function(result, callback){
-			var queryString = 'select error_classname from errors where apikey = ? group by error_classname';
-			var key = req.params.apikey;
-
-			connection.query(queryString, [key], function(err, rows, fields){
-				result.filter_classes = rows;
-				callback(null, result);
-			});
-		},
-
-		function(result, callback){
-			var queryString = 'select tag from tags where apikey = ? group by tag';
-			var key = req.params.apikey;
-
-			connection.query(queryString, [key], function(err, rows, fields){
-				result.filter_tags = rows;
-				callback(null, result);
-			});
 		}
+        //
+		//function(result, callback){
+		//	var queryString = 'select error_classname from errors where apikey = ? group by error_classname';
+		//	var key = req.params.apikey;
+        //
+		//	connection.query(queryString, [key], function(err, rows, fields){
+		//		result.filter_classes = rows;
+		//		callback(null, result);
+		//	});
+		//},
+        //
+		//function(result, callback){
+		//	var queryString = 'select tag from tags where apikey = ? group by tag';
+		//	var key = req.params.apikey;
+        //
+		//	connection.query(queryString, [key], function(err, rows, fields){
+		//		result.filter_tags = rows;
+		//		callback(null, result);
+		//	});
+		//}
 
 	], function(err, result){
 		if(err) throw err;
