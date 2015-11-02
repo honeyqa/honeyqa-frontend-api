@@ -281,7 +281,7 @@ app.get('/project/:project_id/errors', function(req, res){
 			//waterfall로 query문 순차 처리
 			async.waterfall([
 					function(callback){
-						element.error_id = rows[i].error_id;
+						element.id = rows[i].id;
 						element.rank = rows[i].rank;
 						element.numofinstance = rows[i].numofinstances;
 						element.errorname = rows[i].errorname;
@@ -295,7 +295,7 @@ app.get('/project/:project_id/errors', function(req, res){
 					//tag 정보 추가
 					function(index, element, callback){
 						var queryString = 'select tag from tag where error_id = ?';
-						connection.query(queryString, [element.error_id], function(err, rows, fields){
+						connection.query(queryString, [element.id], function(err, rows, fields){
 							if(rows.length != 0){
 								element.tags = rows;
 							}
