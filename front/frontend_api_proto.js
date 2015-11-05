@@ -95,7 +95,7 @@ app.get('/project/:project_id/weekly_appruncount', function(req, res){
 				var element = new Object();
 				element.error_count = 0;
 				element.session_count = 0;
-				element.datetime = '';
+				element.date = '';
 				weeklyArr.push(element);
 			}
 			console.log(weeklyArr);
@@ -103,7 +103,7 @@ app.get('/project/:project_id/weekly_appruncount', function(req, res){
 				var element = new Object();
 				element.error_count = rows[j].error_count;
 				element.session_count = rows[j].session_count;
-				element.datetime = rows[j].datetime;
+				element.date = rows[j].datetime;
 				weeklyArr.push(element);
 			}
 			console.log(weeklyArr);
@@ -113,7 +113,7 @@ app.get('/project/:project_id/weekly_appruncount', function(req, res){
 				var element = new Object();
 				element.error_count = rows[i].error_count;
 				element.session_count = rows[i].session_count;
-				element.datetime = rows[i].datetime;
+				element.date = rows[i].datetime;
 				weeklyArr.push(element);
 			}
 		}
