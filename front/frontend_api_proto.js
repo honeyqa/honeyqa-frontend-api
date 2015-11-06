@@ -1,27 +1,30 @@
 var express = require('express');
-var config = require('./../config/config.js');
+var config = require('./config.js');
 var async = require('async');
 var bodyParser = require('body-parser');
 var app = express();
-
+var https = require('https');
+var fs = require('fs');
 app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
-
 var mysql = require('mysql');
 var connection = mysql.createConnection({
-	host	 : config.host,
-	user 	 : config.user,
-	password : config.password,
-	database : config.database,
-	multipleStatements : 'true'
+        host     : config.host,
+        user     : config.user,
+        password : config.password,
+        database : config.database,
+        multipleStatements : 'true'
 });
 
-var server = app.listen(8080, function(){
-	var host = server.address().address;
-	var port = server.address().port;
-	console.log('Honeyqa API Server Started: %s', port);
-});
+var privateKey  = fs.readFileSync('key.key', 'utf8');
+var certificate = fs.readFileSync('crt.crt', 'utf8');
+
+var credentials = {key: privateKey, cert: certificate};
+
+
+https.createServer(credentials, app).listen(8080);
+
 
 connection.connect(function(err){
 	if(!err){
