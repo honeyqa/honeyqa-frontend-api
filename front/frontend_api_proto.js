@@ -126,7 +126,7 @@ app.get('/project/:project_id/weekly_appruncount', function(req, res){
 // 프로젝트의 일주일 세션 총 개수
 app.get('/project/:project_id/weekly_sessioncount', function(req, res){
 	var key = req.params.project_id;
-	var queryString = 'select count(*) weekly_sessioncount from session where project_id = ?';
+	var queryString = 'select count(*) weekly_sessioncount from session where project_id = ? and datetime >= now() - interval 1 week';
 
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
@@ -143,7 +143,7 @@ app.get('/project/:project_id/weekly_sessioncount', function(req, res){
 // 프로젝트의 일주일 에러 총 개수
 app.get('/project/:project_id/weekly_errorcount', function(req, res){
 	var key = req.params.project_id;
-	var queryString = 'select count(*) weekly_instancecount from instance where project_id = ?';
+	var queryString = 'select count(*) weekly_instancecount from instance where project_id = ? and datetime >= now() - interval 1 week';
 
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
@@ -160,7 +160,7 @@ app.get('/project/:project_id/weekly_errorcount', function(req, res){
 // 프로젝트의 일주일 에러 총 개수
 app.get('/project/:project_id/weekly_instancecount', function(req, res){
 	var key = req.params.project_id;
-	var queryString = 'select count(*) weekly_instancecount from instance where project_id = ?';
+	var queryString = 'select count(*) weekly_instancecount from instance where project_id = ? and datetime >= now() - interval 1 week';
 
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
@@ -362,7 +362,7 @@ app.get('/project/:project_id/filters', function(req, res){
 		function(callback){
 			var queryString = 'select appversion, count(*) as count from instance where project_id = ? group by appversion order by count desc';
 			var key = req.params.project_id;
-			var result = new Object;
+			var result = new Object();
 
 			connection.query(queryString, [key], function(err, rows, fields){
 				result.filter_appversions = rows;
@@ -531,4 +531,81 @@ app.post('/project/:project_id/filtered_errors', function(req, res){
 	//console.log('name: ' + req.body.name);
 	//res.send('name: ' + req.body.name);
 
+});
+
+
+//에러 통계 (단위 week)
+app.get('/error/:error_id/statistics', function(req, res){
+	var key = req.params.error_id;
+	res.header('Access-Control-Allow-Origin', '*');
+
+	async.waterfall([
+		function(callback){
+			var result = new Object();
+			var queryString = 'select count(*) weekly_instancecount from instance where error_id = ? and datetime >= now() - interval 1 week';
+			connection.query(queryString, [key], function(err, rows, fields){
+				if(err) throw err;
+
+				result.tatal_error_count = rows[0].weekly_instancecount;
+				callback(null, result);
+			});
+		},
+		function(result, callback){
+			var queryString = 'select appversion, count(*) as count ' +
+				'from instance ' +
+				'where error_id = ? and datetime >= now() - interval 1 week ' +
+				'group by appversion ' +
+				'order by count(*) desc';
+			connection.query(queryString, [key], function(err, rows, fields){
+				if(err) throw err;
+
+				result.appversion_counts = rows;
+				callback(null, result);
+			});
+		},
+		function(result, callback){
+			var queryString = 'select device, count(*) as count ' +
+				'from instance ' +
+				'where error_id = ? and datetime >= now() - interval 1 week ' +
+				'group by device ' +
+				'order by count(*) desc';
+			connection.query(queryString, [key], function(err, rows, fields){
+				if(err) throw err;
+
+				result.device_counts = rows;
+				callback(null, result);
+			});
+		},
+		function(result, callback){
+			var queryString = 'select osversion, count(*) as count ' +
+				'from instance ' +
+				'where error_id = ? and datetime >= now() - interval 1 week ' +
+				'group by osversion ' +
+				'order by count(*) desc';
+			connection.query(queryString, [key], function(err, rows, fields){
+				if(err) throw err;
+
+				result.sdkversion_counts = rows;
+				callback(null, result);
+			});
+		},
+		function(result, callback){
+			var queryString = 'select country, count(*) as count ' +
+				'from instance ' +
+				'where error_id = ? and datetime >= now() - interval 1 week ' +
+				'group by country ' +
+				'order by count(*) desc';
+			connection.query(queryString, [key], function(err, rows, fields){
+				if(err) throw err;
+
+				result.sdkversion_counts = rows;
+				callback(null, result);
+			});
+		}
+
+	], function(err, result){
+		if(err) throw err;
+
+		res.send(result);
+	});
 });
