@@ -5,6 +5,7 @@ var bodyParser = require('body-parser');
 var app = express();
 var https = require('https');
 var fs = require('fs');
+
 app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
@@ -334,9 +335,13 @@ app.get('/project/:project_id/most/sessionbyappver', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-
 		var result = new Object();
-		result = rows[0];
+		console.log(rows.length);
+		if(rows.length === 0){
+			result.appversion = 'unknown';
+		}else{
+			result = rows[0];
+		}
 		res.send(result);
 	});
 });
@@ -353,10 +358,13 @@ app.get('/project/:project_id/most/errorbyappver', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-
 		var result = new Object();
-		result = rows[0];
-
+		console.log(rows.length);
+		if(rows.length === 0){
+			result.appversion = 'unknown';
+		}else{
+			result = rows[0];
+		}
 		res.send(result);
 	});
 });
@@ -373,10 +381,13 @@ app.get('/project/:project_id/most/errorbydevice', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-
 		var result = new Object();
-		result = rows[0];
-
+		console.log(rows.length);
+		if(rows.length === 0){
+			result.device = 'unknown';
+		}else{
+			result = rows[0];
+		}
 		res.send(result);
 	});
 });
@@ -393,10 +404,13 @@ app.get('/project/:project_id/most/errorbysdkversion', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-
 		var result = new Object();
-		result = rows[0];
-
+		console.log(rows.length);
+		if(rows.length === 0){
+			result.osversion = 'unknown';
+		}else{
+			result = rows[0];
+		}
 		res.send(result);
 	});
 });
@@ -414,9 +428,12 @@ app.get('/project/:project_id/most/errorbycountry', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-
 		var result = new Object();
-		result = rows[0];
+		if(rows.length === 0){
+			result.country = 'unknown';
+		}else{
+			result = rows[0];
+		}
 
 		res.send(result);
 	});
@@ -434,9 +451,12 @@ app.get('/project/:project_id/most/errorbyclassname', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-
 		var result = new Object();
-		result = rows[0];
+		if(rows.length === 0){
+			result.lastactivity = 'unknown';
+		}else{
+			result = rows[0];
+		}
 
 		res.send(result);
 	});
@@ -451,13 +471,144 @@ app.get('/project/:project_id/errors', function(req, res){
 	var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
 		'from error ' +
 		'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
-		'order by rank, numofinstances desc';
+		'order by rank desc, numofinstances desc limit 50';
 
 	connection.query(queryString, [key], function (err, rows, fields) {
 		if (err) throw err;
 
 		var json = new Object();
 		var errorsArr = [];
+
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
+		for(var i = 0; i <rows.length; i++){
+			var element = new Object();
+
+			//waterfall로 query문 순차 처리
+			async.waterfall([
+					function(callback){
+						element.id = rows[i].id;
+						element.rank = rows[i].rank;
+						element.numofinstance = rows[i].numofinstances;
+						element.errorname = rows[i].errorname;
+						element.errorclassname = rows[i].errorclassname;
+						element.linenum = rows[i].linenum;
+						element.status = rows[i].status;
+						element.update_date = rows[i].update_date;
+						callback(null, i, element);
+					},
+
+					//tag 정보 추가
+					function(index, element, callback){
+						var queryString = 'select tag from tag where error_id = ?';
+						connection.query(queryString, [element.id], function(err, rows, fields){
+							if(rows.length != 0){
+								element.tags = rows;
+							}
+							callback(null, index, element);
+						});
+					}],
+				function(err, index, result){
+					if(err) throw err;
+
+					errorsArr.push(result);
+
+					//error 리스트가 끝나면 json 보냄
+					if(index == (rows.length - 1))
+					{
+						json.errors = errorsArr;
+						res.send(json);
+					}
+				});
+		}
+	});
+});
+
+// 프로젝트의 에러 리스트 (1 week, tranding)
+app.get('/project/:project_id/errors_tranding', function(req, res){
+	res.header('Access-Control-Allow-Origin', '*');
+
+	var key = req.params.project_id;
+	var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
+		'from error ' +
+		'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
+		'order by rank desc, numofinstances desc limit 15';
+
+	connection.query(queryString, [key], function (err, rows, fields) {
+		if (err) throw err;
+
+		var json = new Object();
+		var errorsArr = [];
+
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
+		for(var i = 0; i <rows.length; i++){
+			var element = new Object();
+
+			//waterfall로 query문 순차 처리
+			async.waterfall([
+					function(callback){
+						element.id = rows[i].id;
+						element.rank = rows[i].rank;
+						element.numofinstance = rows[i].numofinstances;
+						element.errorname = rows[i].errorname;
+						element.errorclassname = rows[i].errorclassname;
+						element.linenum = rows[i].linenum;
+						element.status = rows[i].status;
+						element.update_date = rows[i].update_date;
+						callback(null, i, element);
+					},
+
+					//tag 정보 추가
+					function(index, element, callback){
+						var queryString = 'select tag from tag where error_id = ?';
+						connection.query(queryString, [element.id], function(err, rows, fields){
+							if(rows.length != 0){
+								element.tags = rows;
+							}
+							callback(null, index, element);
+						});
+					}],
+				function(err, index, result){
+					if(err) throw err;
+
+					errorsArr.push(result);
+
+					//error 리스트가 끝나면 json 보냄
+					if(index == (rows.length - 1))
+					{
+						json.errors = errorsArr;
+						res.send(json);
+					}
+				});
+		}
+
+	});
+});
+
+// 프로젝트의 에러 리스트 (1 week, latest)
+app.get('/project/:project_id/errors_latest', function(req, res){
+	res.header('Access-Control-Allow-Origin', '*');
+
+	var key = req.params.project_id;
+	var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
+		'from error ' +
+		'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
+		'order by update_date desc, rank desc, numofinstances desc limit 15';
+
+	connection.query(queryString, [key], function (err, rows, fields) {
+		if (err) throw err;
+
+		var json = new Object();
+		var errorsArr = [];
+
+		if(rows.length === 0){
+			res.send('{}');
+		}
 
 		for(var i = 0; i <rows.length; i++){
 			var element = new Object();
@@ -861,8 +1012,10 @@ app.get('/statistics/:project_id/session_appversion', function(req, res){
 });
 
 
+
+
 // 통계 페이지 device (상위 9개)
-app.get('/statistics/:project_id/device', function(req, res){
+app.get('', function(req, res){
 	var key = req.params.project_id;
 	var queryString = 'select device, count(*) as count ' +
 		'from instance ' +
@@ -883,8 +1036,10 @@ app.get('/statistics/:project_id/device', function(req, res){
 });
 
 
+
+
 // 통계 페이지 android sdkversion(osversion)
-app.get('/statistics/:project_id/osversion', function(req, res){
+app.get('', function(req, res){
 	var key = req.params.project_id;
 	var queryString = 'select osversion, count(*) as count ' +
 		'from instance ' +
@@ -904,6 +1059,8 @@ app.get('/statistics/:project_id/osversion', function(req, res){
 		res.send(result);
 	});
 });
+
+
 
 // 통계 페이지 android sdkversion(osversion) + rank 분류 추가
 app.get('/statistics/:project_id/osversion_rank', function(req, res){
@@ -970,3 +1127,23 @@ app.get('/statistics/:project_id/lastactivity', function(req, res){
 	});
 });
 
+
+// proguard list
+app.get('/proguard/:project_id', function(req, res){
+	//
+	var key = req.params.project_id;
+	var queryString = 'select id, appversion, filename, date_format(uploadtime, \'%Y-%m-%d %T\') as uploadtime ' +
+		'from proguard ' +
+		'where project_id = ?';
+
+	connection.query(queryString, [key], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
