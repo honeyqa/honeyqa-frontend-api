@@ -99,7 +99,9 @@ app.get('/projects/:user_id', function(req, res){
 
                             //weekly error count 정보 추가
                             function (index, element, callback) {
-                                var queryString = 'select count(*) as weekly_instancecount from instance where project_id = ? and datetime >= now() - interval 1 week';
+                                var queryString = 'select count(*) as weekly_instancecount ' +
+									'from instance ' +
+									'where project_id = ? and datetime >= now() - interval 1 week';
                                 connection.query(queryString, [element.id], function (err, rows, fields) {
                                     if (rows.length != 0) {
                                         element.weekly_errorcount = rows[0].weekly_instancecount;
@@ -265,7 +267,9 @@ app.get('/project/:project_id/weekly_appruncount2', function(req, res){
 // 프로젝트의 일주일 세션 총 개수
 app.get('/project/:project_id/weekly_sessioncount', function(req, res){
 	var key = req.params.project_id;
-	var queryString = 'select count(*) as weekly_sessioncount from session where project_id = ? and datetime >= now() - interval 1 week';
+	var queryString = 'select count(*) as weekly_sessioncount ' +
+		'from session ' +
+		'where project_id = ? and datetime >= now() - interval 1 week';
 
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
@@ -282,7 +286,9 @@ app.get('/project/:project_id/weekly_sessioncount', function(req, res){
 // 프로젝트의 일주일 에러 총 개수
 app.get('/project/:project_id/weekly_errorcount', function(req, res){
 	var key = req.params.project_id;
-	var queryString = 'select count(*) as weekly_instancecount from instance where project_id = ? and datetime >= now() - interval 1 week';
+	var queryString = 'select count(*) as weekly_instancecount ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval 1 week';
 
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
@@ -299,7 +305,9 @@ app.get('/project/:project_id/weekly_errorcount', function(req, res){
 // 프로젝트의 일주일 에러 총 개수
 app.get('/project/:project_id/weekly_instancecount', function(req, res){
 	var key = req.params.project_id;
-	var queryString = 'select count(*) as weekly_instancecount from instance where project_id = ? and datetime >= now() - interval 1 week';
+	var queryString = 'select count(*) as weekly_instancecount ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval 1 week';
 
 	connection.query(queryString, [key], function(err, rows, fields){
 		if(err) throw err;
@@ -500,7 +508,10 @@ app.get('/project/:project_id/filters', function(req, res){
 
 	async.waterfall([
 		function(callback){
-			var queryString = 'select appversion, count(*) as count from instance where project_id = ? group by appversion order by count desc';
+			var queryString = 'select appversion, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval 1 week ' +
+				'group by appversion order by count desc';
 			var key = req.params.project_id;
 			var result = new Object();
 
@@ -509,18 +520,25 @@ app.get('/project/:project_id/filters', function(req, res){
 				callback(null, result);
 			});
 		},
+
 		function(result, callback){
-			var queryString = 'select device, count(*) as count from instance where project_id = ? group by device order by count desc';
+			var queryString = 'select device, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval 1 ' +
+				'week group by device order by count desc';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key], function(err, rows, fields){
 				result.filter_devices = rows;
 				callback(null, result);
 			});
-
 		},
+
 		function(result, callback){
-			var queryString = 'select sdkversion, count(*) as count from instance where project_id = ? group by sdkversion order by count desc';
+			var queryString = 'select sdkversion, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval 1 week ' +
+				'group by sdkversion order by count desc';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key], function(err, rows, fields){
@@ -528,8 +546,12 @@ app.get('/project/:project_id/filters', function(req, res){
 				callback(null, result);
 			});
 		},
+
 		function(result, callback){
-			var queryString = 'select country, count(*) as count from instance where project_id = ? group by country order by count desc';
+			var queryString = 'select country, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval 1 week ' +
+				'group by country order by count desc';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key], function(err, rows, fields){
@@ -539,7 +561,10 @@ app.get('/project/:project_id/filters', function(req, res){
 		},
 
 		function(result, callback){
-			var queryString = 'select errorclassname from error where project_id = ? group by errorclassname';
+			var queryString = 'select errorclassname ' +
+				'from error ' +
+				'where project_id = ? and datetime >= now() - interval 1 week ' +
+				'group by errorclassname';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key], function(err, rows, fields){
@@ -549,7 +574,10 @@ app.get('/project/:project_id/filters', function(req, res){
 		},
 
 		function(result, callback){
-			var queryString = 'select tag from tag where project_id = ? group by tag';
+			var queryString = 'select tag ' +
+				'from tag ' +
+				'where project_id = ? and datetime >= now() - interval 1 week ' +
+				'group by tag';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key], function(err, rows, fields){
@@ -648,7 +676,7 @@ app.get('/instance/:instance_id/eventpath', function(req, res){
 	});
 });
 
-//에러 통계 (단위 week)
+//에러 디테일 페이지 통계 (단위 week)
 app.get('/error/:error_id/statistics', function(req, res){
 	var key = req.params.error_id;
 	res.header('Access-Control-Allow-Origin', '*');
@@ -724,8 +752,14 @@ app.get('/error/:error_id/statistics', function(req, res){
 	});
 });
 
-app.get('/statistics/:project_id/appversion', function(req, res){
+// 통계 페이지 error by appversion
+app.get('/statistics/:project_id/error_appversion', function(req, res){
     var key = req.params.project_id;
+	var result = new Object();
+	result.keys = [];
+	result.values = [];
+
+	var period = 7;
     res.header('Access-Control-Allow-Origin', '*');
 
     var queryString = 'select i2.appversion, if(i1.count is null, i2.count,i1.count) as count, date_format((now() - interval ? day), \'%Y-%m-%d\') as datetime ' +
@@ -736,22 +770,203 @@ app.get('/statistics/:project_id/appversion', function(req, res){
         'right join ' +
         '(select appversion, 0 as count, project_id from instance where project_id = ? group by appversion) as i2 ' +
         'on i1.appversion = i2.appversion';
-    for(var i = 6; i >= 0; i--){
+    for(var i = period - 1; i >= 0; i--){
         async.waterfall([
             function(callback){
+
+				var element = '';
                 var index = i;
                 connection.query(queryString, [index, key, index, key], function(err, rows, fields){
                     if(err) throw err;
 
+					if(index === 0){
+						for(var j = 0; j < rows.length; j++){
+							result.keys.push(rows[j].appversion);
+						}
+					}
                     console.log(index);
                     //result.stat_appversion
-                    result = rows;
-                    callback(null, result);
+					element += '{ \"datetime\": ';
+					element += '\"' + rows[0].datetime + '\"';
+					for(var k = 0; k < rows.length; k++){
+						element += ', ' + '\"'+rows[k].appversion+ '\"';
+						element += ': ' + rows[k].count;
+					}
+					element += '}';
+					element = JSON.parse(element);
+					result.values.push(element);
+                    callback(null, index, result);
                 });
             }
-        ], function(err, result){
-            console.log(result);
+        ], function(err, index, result){
+			if(index === 0){
+				res.send(result);
+			}
         });
     }
-
 });
+
+// 통계 페이지 session by appversion
+app.get('/statistics/:project_id/session_appversion', function(req, res){
+	var key = req.params.project_id;
+	var result = new Object();
+	result.keys = [];
+	result.values = [];
+
+	var period = 7;
+	res.header('Access-Control-Allow-Origin', '*');
+
+	var queryString = 'select i2.appversion, if(i1.count is null, i2.count,i1.count) as count, date_format((now() - interval ? day), \'%Y-%m-%d\') as datetime ' +
+		'from (select appversion, count(*) as count, project_id, datetime ' +
+		'from session ' +
+		'where project_id = ? and date(datetime) = date(now() - interval ? day) ' +
+		'group by appversion) as i1 ' +
+		'right join ' +
+		'(select appversion, 0 as count, project_id from session where project_id = ? group by appversion) as i2 ' +
+		'on i1.appversion = i2.appversion';
+	for(var i = period - 1; i >= 0; i--){
+		async.waterfall([
+			function(callback){
+
+				var element = '';
+				var index = i;
+				connection.query(queryString, [index, key, index, key], function(err, rows, fields){
+					if(err) throw err;
+
+					if(index === 0){
+						for(var j = 0; j < rows.length; j++){
+							result.keys.push(rows[j].appversion);
+						}
+					}
+					console.log(index);
+					//result.stat_appversion
+					element += '{ \"datetime\": ';
+					element += '\"' + rows[0].datetime + '\"';
+					for(var k = 0; k < rows.length; k++){
+						element += ', ' + '\"'+rows[k].appversion+ '\"';
+						element += ': ' + rows[k].count;
+					}
+					element += '}';
+					element = JSON.parse(element);
+					result.values.push(element);
+					callback(null, index, result);
+				});
+			}
+		], function(err, index, result){
+			if(index === 0){
+				res.send(result);
+			}
+		});
+	}
+});
+
+
+// 통계 페이지 device (상위 9개)
+app.get('/statistics/:project_id/device', function(req, res){
+	var key = req.params.project_id;
+	var queryString = 'select device, count(*) as count ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval 1 week ' +
+		'group by device order by count desc limit 9';
+	var result = new Object();
+
+	connection.query(queryString, [key], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
+
+// 통계 페이지 android sdkversion(osversion)
+app.get('/statistics/:project_id/osversion', function(req, res){
+	var key = req.params.project_id;
+	var queryString = 'select osversion, count(*) as count ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval ? day ' +
+		'group by osversion';
+	var result = new Object();
+	var period = 7;
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
+// 통계 페이지 android sdkversion(osversion) + rank 분류 추가
+app.get('/statistics/:project_id/osversion_rank', function(req, res){
+	var key = req.params.project_id;
+	var period = 7;
+	var queryString = 'select instance.osversion, error.rank, count(rank) as rank_count ' +
+		'from instance, error ' +
+		'where instance.project_id = ? and instance.error_id = error.id and datetime >= now() - interval ? day ' +
+		'group by appversion';
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
+
+// 통계 페이지 country
+app.get('/statistics/:project_id/country', function(req, res){
+	var key = req.params.project_id;
+	var period = 7;
+	var queryString = 'select country, count(*) as count ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval ? day ' +
+		'group by country order by country desc';
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
+
+// 통계 페이지 lastactivity
+app.get('/statistics/:project_id/lastactivity', function(req, res){
+	var key = req.params.project_id;
+	var period = 7;
+	var queryString = 'select lastactivity, count(*) as count ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval ? day ' +
+		'group by lastactivity order by lastactivity desc';
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
