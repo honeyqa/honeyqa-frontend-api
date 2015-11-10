@@ -18,7 +18,7 @@ var connection = mysql.createConnection({
         multipleStatements : 'true'
 });
 
-//
+
 var privateKey  = fs.readFileSync('key.key', 'utf8');
 var certificate = fs.readFileSync('crt.crt', 'utf8');
 
@@ -31,7 +31,7 @@ https.createServer(credentials, app).listen(8080);
 //	var port = server.address().port;
 //	console.log('Honeyqa API Server Started: %s', port);
 //});
-//
+
 
 connection.connect(function(err){
 	if(!err){
@@ -171,12 +171,12 @@ app.get('/project/:project_id', function(req, res){
 // 프로젝트의 일주일 동안의 에러 개수, 세션 개수
 app.get('/project/:project_id/weekly_appruncount', function(req, res){
 	var key = req.params.project_id;
-    var period = 7;
-	var queryString = 'select error_count, session_count, DATE_FORMAT(datetime,\'%Y-%m-%d\') as datetime ' +
-		'from appruncount ' +
-		'where project_id = ? and datetime >= now() - interval ? day ' +
-		'order by datetime';
-	connection.query(queryString, [key, period], function(err, rows, fields){
+    var period = 6;
+	var queryString = 'select if(a1.error_count is null, a2.error_count, a1.error_count) as error_count, if(a1.session_count is null, a2.session_count, a1.session_count) as session_count, date_format(a2.datetime, \'%Y-%m-%d\') as datetime ' +
+		'from (select error_count, session_count, date(datetime) as datetime from appruncount where project_id = ? and datetime >= now() - interval ? day order by datetime) as a1 ' +
+		'right join (select datetime, 0 as error_count, 0 as session_count from appruncount where datetime >= now() - interval ? day group by date(datetime) order by datetime) as a2 ' +
+		'on date(a1.datetime) = date(a2.datetime)';
+	connection.query(queryString, [key, period, period], function(err, rows, fields){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
@@ -184,37 +184,12 @@ app.get('/project/:project_id/weekly_appruncount', function(req, res){
 		var result = new Object();
 		var weeklyArr = [];
 
-        // error count가 없으면 0 출력
-		if(rows.length < period){
-			var len = period - rows.length;
-			for(var i=0; i<len; i++){
-				var element = new Object();
-				element.error_count = 0;
-				element.session_count = 0;
-                var today = new Date();
-                today.setDate(today.getDate() - (period-i-1));
-                var yyyy = today.getFullYear().toString();
-                var mm = (today.getMonth() + 1).toString();
-                var dd = (today.getDate()).toString();
-				element.date = yyyy+'-'+(mm[1] ? mm : '0'+mm[0])+'-'+(dd[1] ? dd : '0'+dd[0]);
-				weeklyArr.push(element);
-			}
-			for(var j=0; j<rows.length; j++){
-				var element = new Object();
-				element.error_count = rows[j].error_count;
-				element.session_count = rows[j].session_count;
-				element.date = rows[j].datetime;
-				weeklyArr.push(element);
-			}
-		}
-		else{
-			for(var i=0; i<rows.length; i++){
-				var element = new Object();
-				element.error_count = rows[i].error_count;
-				element.session_count = rows[i].session_count;
-				element.date = rows[i].datetime;
-				weeklyArr.push(element);
-			}
+		for(var i=0; i<rows.length; i++) {
+			var element = new Object();
+			element.error_count = rows[i].error_count;
+			element.session_count = rows[i].session_count;
+			element.date = rows[i].datetime;
+			weeklyArr.push(element);
 		}
 
 		result.weekly = weeklyArr;
@@ -225,52 +200,31 @@ app.get('/project/:project_id/weekly_appruncount', function(req, res){
 
 // 프로젝트의 일주일 동안의 에러 개수, 세션 개수 (2)
 app.get('/project/:project_id/weekly_appruncount2', function(req, res){
-    var key = req.params.project_id;
-    var period = 7;
-    var queryString = 'select datetime, error_count ' +
-        'from appruncount ' +
-        'where project_id = ? and datetime >= now() - interval ? day ' +
-        'order by datetime';
-    connection.query(queryString, [key, period], function(err, rows, fields){
-        if(err) throw err;
+	var key = req.params.project_id;
+	var period = 6;
+	var queryString = 'select date(a2.datetime) as datetime, if(a1.error_count is null, a2.error_count, a1.error_count) as error_count ' +
+		'from (select datetime, error_count from appruncount where project_id = ? and datetime >= now() - interval ? day order by datetime) as a1 ' +
+		'right join (select datetime, 0 as error_count from appruncount where datetime >= now() - interval ? day group by date(datetime) order by datetime) as a2 ' +
+		'on date(a1.datetime) = date(a2.datetime)';
+	connection.query(queryString, [key, period, period], function(err, rows, fields){
+		if(err) throw err;
 
-        res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Origin', '*');
+		console.log(rows);
+		var result = new Object();
+		var weeklyArr = [];
 
-        var result = new Object();
-        var weeklyArr = [];
+		for(var i=0; i<rows.length; i++) {
+			var element = [];
+			var datetime = rows[i].datetime;
+			element.push(datetime.getTime());
+			element.push(rows[i].error_count);
+			weeklyArr.push(element);
+		}
 
-        // error count가 없으면 0 출력
-        if(rows.length < period){
-            var len = period - rows.length - 1;
-            for(var i=0; i<len; i++){
-                var element = [];
-                var today = new Date();
-                today.setDate(today.getDate() - (period-i-1));
-				element.push(today.getTime());
-				element.push(0);
-				weeklyArr.push(element);
-            }
-            for(var j=0; j<rows.length; j++){
-                var element = [];
-				var datetime = rows[j].datetime;
-                element.push(datetime.getTime());
-                element.push(rows[j].error_count);
-                weeklyArr.push(element);
-            }
-        }
-        else{
-            for(var i=0; i<rows.length; i++){
-                var element = [];
-				var datetime = rows[i].datetime;
-				element.push(datetime.getTime());
-                element.push(rows[i].error_count);
-                weeklyArr.push(element);
-            }
-        }
-
-        result.data = weeklyArr;
-        res.send(result);
-    });
+		result.data = weeklyArr;
+		res.send(result);
+	});
 });
 
 
@@ -844,6 +798,34 @@ app.get('/error/:error_id/instances',function(req, res){
 	});
 });
 
+// 에러 id에 대한 일주일 카운트 정보 (error_id = 1)
+app.get('/error/:error_id/daily_errorcount', function(req, res){
+	var key = req.params.error_id;
+	var period = 6;
+	var queryString = 'select date(a.datetime) as datetime, if(i.error_count is null, a.error_count, i.error_count) as error_count from (select datetime, count(*) error_count from instance where error_id = ? and datetime >= now() - interval ? day group by date(datetime) order by datetime) as i ' +
+		'right join (select datetime, 0 as error_count from appruncount where datetime >= now() - interval ? day group by date(datetime) order by datetime) as a ' +
+		'on date(i.datetime) = date(a.datetime);';
+	connection.query(queryString, [key, period, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+		console.log(rows);
+		var result = new Object();
+		var weeklyArr = [];
+
+		for(var i=0; i<rows.length; i++) {
+			var element = [];
+			var datetime = rows[i].datetime;
+			element.push(datetime.getTime());
+			element.push(rows[i].error_count);
+			weeklyArr.push(element);
+		}
+
+		result.data = weeklyArr;
+		res.send(result);
+	});
+});
+
 //http://localhost:8080/instance/20446446/eventpath
 // 해당 인스턴스의 이벤트 패스
 app.get('/instance/:instance_id/eventpath', function(req, res){
@@ -942,7 +924,6 @@ app.get('/error/:error_id/statistics', function(req, res){
 		res.send(result);
 	});
 });
-
 
 
 /*
@@ -1240,6 +1221,7 @@ app.get('/statistics/:project_id/rank_rate', function(req, res){
 	});
 });
 
+
 // 통계 페이지 error appversion & osversion
 app.get('/statistics/:project_id/error_version', function(req, res){
 	var key = req.params.project_id;
@@ -1248,22 +1230,47 @@ app.get('/statistics/:project_id/error_version', function(req, res){
 
 	res.header('Access-Control-Allow-Origin', '*');
 
-	var queryString = 'select appversion ' +
-		'from instance ' +
-		'where project_id = ? and datetime >= now() - interval ? day ' +
-		'group by appversion';
+	var queryString = 'select appversion, count(*) as count ' +
+		'from instance where project_id = ? and datetime >= now() - interval ? day ' +
+		'group by appversion order by count desc';
 
 	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
 		if(rows.length === 0){
 			res.send('{}');
 		}
 
 		var index = 0;
-		for(var i = 0; i < rows.length; i++){
-			index = i;
-			async.waterfall([
+		var result = new Object();
+		result.data = [];
 
-			], function(err, index, result){
+		for(var i = 0; i < rows.length; i++){
+			async.waterfall([
+				function(callback){
+					index = i;
+					var versionArr = [];
+					versionArr.push(rows[i].appversion);
+					callback(null, index, versionArr);
+				},
+				function(index, arr, callback){
+					var queryString = 'select osversion, count(*) as count from instance where project_id = ? and appversion = ? and datetime >= now() - interval ? day group by osversion order by count';
+					connection.query(queryString, [key, arr[0], period], function(err, rows, fields){
+						if(err) throw err;
+
+						for(var j = 0; j <rows.length; j++){
+							var element = new Object();
+							element.osversion = rows[j].osversion;
+							element.count = rows[j].count;
+							arr.push(element);
+						}
+						console.log(arr);
+						callback(null, index, arr);
+					});
+				}
+			], function(err, index, arr){
+				result.data.push(arr);
+				console.log(result);
 				if(index === (rows.length - 1)){
 					res.send(result);
 				}
@@ -1313,7 +1320,7 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
 /*
 
 	Insert
-i
+
  */
 
 app.post('/project/add', function(req, res){
