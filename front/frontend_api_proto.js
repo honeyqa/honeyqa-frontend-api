@@ -1,3 +1,4 @@
+var md5 = require('md5');
 var express = require('express');
 var config = require('./../config/config.js');
 var async = require('async');
@@ -5,7 +6,6 @@ var bodyParser = require('body-parser');
 var app = express();
 var https = require('https');
 var fs = require('fs');
-
 app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
@@ -38,6 +38,7 @@ connection.connect(function(err){
 		console.log('Database is connected ... \n\n');
 	}else{
 		console.log('Error connecting database ... \n\n');
+		winston.error('Error connecting database: '+err);
 	}
 });
 
@@ -368,7 +369,6 @@ app.get('/project/:project_id/most/errorbyappver', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 		var result = new Object();
-		console.log(rows.length);
 		if(rows.length === 0){
 			result.appversion = 'unknown';
 		}else{
@@ -391,7 +391,6 @@ app.get('/project/:project_id/most/errorbydevice', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 		var result = new Object();
-		console.log(rows.length);
 		if(rows.length === 0){
 			result.device = 'unknown';
 		}else{
@@ -414,7 +413,6 @@ app.get('/project/:project_id/most/errorbysdkversion', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 		var result = new Object();
-		console.log(rows.length);
 		if(rows.length === 0){
 			result.osversion = 'unknown';
 		}else{
@@ -697,10 +695,10 @@ app.get('/project/:project_id/filters', function(req, res){
 		},
 
 		function(result, callback){
-			var queryString = 'select sdkversion, count(*) as count ' +
+			var queryString = 'select osversion, count(*) as count ' +
 				'from instance ' +
 				'where project_id = ? and datetime >= now() - interval ? day ' +
-				'group by sdkversion order by count desc';
+				'group by osversion order by count desc';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
@@ -945,6 +943,16 @@ app.get('/error/:error_id/statistics', function(req, res){
 	});
 });
 
+
+
+/*
+
+	Statistics
+
+ */
+
+
+
 // 통계 페이지 error by appversion
 app.get('/statistics/:project_id/error_appversion', function(req, res){
     var key = req.params.project_id;
@@ -977,7 +985,6 @@ app.get('/statistics/:project_id/error_appversion', function(req, res){
 							result.keys.push(rows[j].appversion);
 						}
 					}
-                    console.log(index);
                     //result.stat_appversion
 					element += '{ \"datetime\": ';
 					element += '\"' + rows[0].datetime + '\"';
@@ -1031,7 +1038,6 @@ app.get('/statistics/:project_id/session_appversion', function(req, res){
 							result.keys.push(rows[j].appversion);
 						}
 					}
-					console.log(index);
 					//result.stat_appversion
 					element += '{ \"datetime\": ';
 					element += '\"' + rows[0].datetime + '\"';
@@ -1053,9 +1059,6 @@ app.get('/statistics/:project_id/session_appversion', function(req, res){
 	}
 });
 
-
-
-
 // 통계 페이지 device (상위 9개)
 app.get('/statistics/:project_id/device', function(req, res){
 	var key = req.params.project_id;
@@ -1071,15 +1074,16 @@ app.get('/statistics/:project_id/device', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
 		var result = new Object();
 		result = rows;
 
 		res.send(result);
 	});
 });
-
-
-
 
 // 통계 페이지 android sdkversion(osversion)
 app.get('/statistics/:project_id/osversion', function(req, res){
@@ -1096,14 +1100,16 @@ app.get('/statistics/:project_id/osversion', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
 		var result = new Object();
 		result = rows;
 
 		res.send(result);
 	});
 });
-
-
 
 // 통계 페이지 android sdkversion(osversion) + rank 분류 추가
 app.get('/statistics/:project_id/osversion_rank', function(req, res){
@@ -1119,13 +1125,16 @@ app.get('/statistics/:project_id/osversion_rank', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
 		var result = new Object();
 		result = rows;
 
 		res.send(result);
 	});
 });
-
 
 // 통계 페이지 country
 app.get('/statistics/:project_id/country', function(req, res){
@@ -1141,6 +1150,10 @@ app.get('/statistics/:project_id/country', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
 		var result = new Object();
 		result = rows;
 
@@ -1153,15 +1166,19 @@ app.get('/statistics/:project_id/country', function(req, res){
 app.get('/statistics/:project_id/lastactivity', function(req, res){
 	var key = req.params.project_id;
 	var period = 7;
-	var queryString = 'select lastactivity, count(*) as count ' +
+	var queryString = 'select if(lastactivity = \"\", \"unknown\", lastactivity) as lastactivity, count(*) as count ' +
 		'from instance ' +
 		'where project_id = ? and datetime >= now() - interval ? day ' +
-		'group by lastactivity order by lastactivity desc';
+		'group by lastactivity order by count desc';
 
 	connection.query(queryString, [key, period], function(err, rows, fields){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
+
+		if(rows.length === 0){
+			res.send('{}');
+		}
 
 		var result = new Object();
 		result = rows;
@@ -1170,6 +1187,90 @@ app.get('/statistics/:project_id/lastactivity', function(req, res){
 	});
 });
 
+// 통계 페이지 errorclassname
+app.get('/statistics/:project_id/errorclassname', function(req, res){
+	var key = req.params.project_id;
+	var period = 7;
+
+	var queryString = 'select if(error.errorclassname = \"\", \"unknown\", error.errorclassname) as errorclassname, count(error.rank) as count ' +
+		'from instance join error on instance.error_id = error.id ' +
+		'where instance.project_id = ? and instance.datetime >= now() - interval ? day ' +
+		'group by errorclassname order by count desc';
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
+// 대시보드, 통계 페이지 rank rate
+app.get('/statistics/:project_id/rank_rate', function(req, res){
+	var key = req.params.project_id;
+	var period = 7;
+	res.header('Access-Control-Allow-Origin', '*');
+
+	var queryString = 'select error.rank, count(error.rank) as count ' +
+		'from instance join error on instance.error_id = error.id ' +
+		'where instance.project_id = ? and instance.datetime >= now() - interval ? day ' +
+		'group by rank';
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(err) throw err;
+
+		res.header('Access-Control-Allow-Origin', '*');
+
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
+		var result = new Object();
+		result = rows;
+
+		res.send(result);
+	});
+});
+
+// 통계 페이지 error appversion & osversion
+app.get('/statistics/:project_id/error_version', function(req, res){
+	var key = req.params.project_id;
+	var result = new Object();
+	var period = 7;
+
+	res.header('Access-Control-Allow-Origin', '*');
+
+	var queryString = 'select appversion ' +
+		'from instance ' +
+		'where project_id = ? and datetime >= now() - interval ? day ' +
+		'group by appversion';
+
+	connection.query(queryString, [key, period], function(err, rows, fields){
+		if(rows.length === 0){
+			res.send('{}');
+		}
+
+		var index = 0;
+		for(var i = 0; i < rows.length; i++){
+			index = i;
+			async.waterfall([
+
+			], function(err, index, result){
+				if(index === (rows.length - 1)){
+					res.send(result);
+				}
+			});
+		}
+	});
+});
 
 // proguard list
 app.get('/proguard/:project_id', function(req, res){
@@ -1183,6 +1284,9 @@ app.get('/proguard/:project_id', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
+		if(rows.length === 0){
+			res.send('{}');
+		}
 
 		var result = new Object();
 		result = rows;
@@ -1190,3 +1294,60 @@ app.get('/proguard/:project_id', function(req, res){
 		res.send(result);
 	});
 });
+
+app.post('/project/:project_id/errors/filtered', function(req, res){
+	var key = req.params.project_id;
+	var body = req.body;
+
+	res.send(body);
+});
+
+app.post('/project/:project_id/errors/filtered/latest', function(req, res){
+	var key = req.params.project_id;
+	var body = req.body;
+
+	res.send(body);
+});
+
+
+/*
+
+	Insert
+
+ */
+
+app.post('/project/add', function(req, res){
+	res.header('Access-Control-Allow-Origin', '*');
+	var body = req.body;
+
+	if(!body.hasOwnProperty('appname') || !body.hasOwnProperty('platform') || !body.hasOwnProperty('category') || !body.hasOwnProperty('stage') || !body.hasOwnProperty('user_id')){
+		res.status(500);
+		res.send('{}');
+	}
+
+	var title = body.appname;
+	var platform = parseInt(body.platform);
+	var category = parseInt(body.category);
+	var stage = parseInt(body.stage);
+	var user_id = parseInt(body.user_id);
+	var today = new Date();
+	var apikey = md5(user_id + title + today + 'honey' + Math.floor(Math.random() * 100)).substr(0, 8);
+
+	var timezone = 'Asiz/Seoul';
+	var queryString = 'insert into ' +
+		'project (apikey, platform, title, category, stage, timezone, datetime, user_id) ' +
+		'values (?,?,?,?,?,?,now(),?)';
+
+	connection.query(queryString, [apikey, platform, title, category, stage, timezone, user_id], function(err, rows, fields){
+		if(err){
+			res.status(500);
+			res.send('{}');
+			throw err;
+		}else{
+			var result = new Object();
+			result.project_id = rows.insertId;
+			res.send(result);
+		}
+	});
+});
+
