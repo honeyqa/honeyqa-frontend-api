@@ -1513,3 +1513,23 @@ app.post('/project/:project_id/errors_filtered', function(req, res){
 
     res.send(body);
 });
+
+// SESSION
+app.post('/api/v2/client/exception', function(req, res) {
+  // TODO : Handle data from client
+  // REFERENCE : https://github.com/UrQA/Api_Backand/blob/master/controllers/url_control.js#L24
+  var result = {
+    'state': 'success'
+  };
+  res.send(result);
+});
+
+// SESSION
+app.post('/urqa/client/connect', function(req, res) {
+  // TODO : Handle data from client
+  // REFERENCE : https://github.com/UrQA/Api_Backand/blob/master/controllers/url_control.js#L24
+  var result = {
+    'state': 'success'
+  };
+  res.send(result);
+});
