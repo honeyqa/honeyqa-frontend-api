@@ -4,8 +4,8 @@ var config = require('./../config/config.js');
 var async = require('async');
 var bodyParser = require('body-parser');
 var app = express();
-var https = require('https');
-var fs = require('fs');
+//var https = require('https');
+//var fs = require('fs');
 app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
@@ -691,11 +691,11 @@ app.get('/project/:project_id/filters', function(req, res){
 		function(result, callback){
 			var queryString = 'select tag ' +
 				'from tag ' +
-				'where project_id = ? and update_date >= now() - interval ? day ' +
+				'where project_id = ?' +
 				'group by tag';
 			var key = req.params.project_id;
 
-			connection.query(queryString, [key, period], function(err, rows, fields){
+			connection.query(queryString, [key], function(err, rows, fields){
 				result.filter_tags = rows;
 				callback(null, result);
 			});
@@ -725,9 +725,13 @@ app.get('/project/:project_id/filters2', function(req, res){
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
 				result.filter_appversions = rows;
-
-				if(rows.length < 4){
-					for(var i=0; i<= 4 - rows.length; i++){
+                var len = rows.length;
+				if(len < 4){
+					for(var i=0; i< 4 - len; i++){
+                        console.log(4-len);
+                        console.log(i);
+                        console.log(len);
+                        console.log();
 						var element = new Object();
 						element.appversion = 0;
 						element.count = 0;
@@ -747,8 +751,9 @@ app.get('/project/:project_id/filters2', function(req, res){
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
 				result.filter_devices = rows;
-				if(rows.length < 4){
-					for(var i=0; i<= 4 - rows.length; i++){
+                var len = rows.length;
+                if(len < 4){
+					for(var i=0; i< 4 - len; i++){
 						var element = new Object();
 						element.device = 0;
 						element.count = 0;
@@ -768,8 +773,9 @@ app.get('/project/:project_id/filters2', function(req, res){
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
 				result.filter_sdkversions = rows;
-				if(rows.length < 4){
-					for(var i=0; i<= 4 - rows.length; i++){
+                var len = rows.length;
+                if(len < 4){
+					for(var i=0; i< 4 - len; i++){
 						var element = new Object();
 						element.osversion = 0;
 						element.count = 0;
@@ -789,8 +795,9 @@ app.get('/project/:project_id/filters2', function(req, res){
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
 				result.filter_countries = rows;
-				if(rows.length < 4){
-					for(var i=0; i<= 4 - rows.length; i++){
+                var len = rows.length;
+                if(len < 4){
+					for(var i=0; i< 4 - len; i++){
 						var element = new Object();
 						element.country = 0;
 						element.count = 0;
@@ -1394,6 +1401,9 @@ app.get('/statistics/:project_id/error_version', function(req, res){
                             var arr = [];
                             arr.push(osversion);
                             for(var j = 0; j < rows.length; j++){
+                                if(j > 10){
+                                    break;
+                                }
                                 arr.push(rows[j].count);
                                 if(index === 0){
                                     result.appversion.push(rows[j].appversion);
