@@ -639,10 +639,11 @@ app.get('/project/:project_id/filters', function(req, res){
 			var queryString = 'select device, count(*) as count ' +
 				'from instance ' +
 				'where project_id = ? and datetime >= now() - interval ? day ' +
-				'week group by device order by count desc';
+				'group by device order by count desc';
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
+				console.log(rows);
 				result.filter_devices = rows;
 				callback(null, result);
 			});
@@ -677,7 +678,7 @@ app.get('/project/:project_id/filters', function(req, res){
 		function(result, callback){
 			var queryString = 'select errorclassname ' +
 				'from error ' +
-				'where project_id = ? and datetime >= now() - interval ? day ' +
+				'where project_id = ? and update_date >= now() - interval ? day ' +
 				'group by errorclassname';
 			var key = req.params.project_id;
 
@@ -690,7 +691,7 @@ app.get('/project/:project_id/filters', function(req, res){
 		function(result, callback){
 			var queryString = 'select tag ' +
 				'from tag ' +
-				'where project_id = ? and datetime >= now() - interval ? day ' +
+				'where project_id = ? and update_date >= now() - interval ? day ' +
 				'group by tag';
 			var key = req.params.project_id;
 
@@ -706,6 +707,146 @@ app.get('/project/:project_id/filters', function(req, res){
 		res.send(result);
 	});
 });
+
+// 프로젝트의 필터 요소 (maximum 4)
+app.get('/project/:project_id/filters2', function(req, res){
+	res.header('Access-Control-Allow-Origin', '*');
+
+	var period = 7;
+
+	async.waterfall([
+		function(callback){
+			var queryString = 'select appversion, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval ? day ' +
+				'group by appversion order by count desc limit 4';
+			var key = req.params.project_id;
+			var result = new Object();
+
+			connection.query(queryString, [key, period], function(err, rows, fields){
+				result.filter_appversions = rows;
+
+				if(rows.length < 4){
+					for(var i=0; i<= 4 - rows.length; i++){
+						var element = new Object();
+						element.appversion = 0;
+						element.count = 0;
+						result.filter_appversions.push(element);
+					}
+				}
+				callback(null, result);
+			});
+		},
+
+		function(result, callback){
+			var queryString = 'select device, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval ? day ' +
+				'group by device order by count desc limit 4';
+			var key = req.params.project_id;
+
+			connection.query(queryString, [key, period], function(err, rows, fields){
+				result.filter_devices = rows;
+				if(rows.length < 4){
+					for(var i=0; i<= 4 - rows.length; i++){
+						var element = new Object();
+						element.device = 0;
+						element.count = 0;
+						result.filter_devices.push(element);
+					}
+				}
+				callback(null, result);
+			});
+		},
+
+		function(result, callback){
+			var queryString = 'select osversion, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval ? day ' +
+				'group by osversion order by count desc limit 4';
+			var key = req.params.project_id;
+
+			connection.query(queryString, [key, period], function(err, rows, fields){
+				result.filter_sdkversions = rows;
+				if(rows.length < 4){
+					for(var i=0; i<= 4 - rows.length; i++){
+						var element = new Object();
+						element.osversion = 0;
+						element.count = 0;
+						result.filter_sdkversions.push(element);
+					}
+				}
+				callback(null, result);
+			});
+		},
+
+		function(result, callback){
+			var queryString = 'select country, count(*) as count ' +
+				'from instance ' +
+				'where project_id = ? and datetime >= now() - interval ? day ' +
+				'group by country order by count desc limit 4';
+			var key = req.params.project_id;
+
+			connection.query(queryString, [key, period], function(err, rows, fields){
+				result.filter_countries = rows;
+				if(rows.length < 4){
+					for(var i=0; i<= 4 - rows.length; i++){
+						var element = new Object();
+						element.country = 0;
+						element.count = 0;
+						result.filter_countries.push(element);
+					}
+				}
+				callback(null, result);
+			});
+		},
+
+		function(result, callback){
+			var queryString = 'select errorclassname ' +
+				'from error ' +
+				'where project_id = ? and update_date >= now() - interval ? day ' +
+				'group by errorclassname';
+			var key = req.params.project_id;
+
+			connection.query(queryString, [key, period], function(err, rows, fields){
+				result.filter_classes = rows;
+				if(rows.length === 0){
+					var element = new Object();
+					element.errorclassname = 0;
+					element.count = 0;
+					result.filter_classes.push(element);
+				}
+				callback(null, result);
+			});
+		},
+
+		function(result, callback){
+			var queryString = 'select tag ' +
+				'from tag ' +
+				'where project_id = ? ' +
+				'group by tag';
+			var key = req.params.project_id;
+
+			connection.query(queryString, [key, period], function(err, rows, fields){
+				result.filter_tags = rows;
+				if(rows.length === 0){
+					var element = new Object();
+					element.tag = 0;
+					element.count = 0;
+					result.filter_tags.push(element);
+				}
+				callback(null, result);
+			});
+		}
+
+	], function(err, result){
+		if(err) throw err;
+
+		res.send(result);
+	});
+});
+
+
 
 // 에러 디테일 정보
 // /error/891841
@@ -861,7 +1002,7 @@ app.get('/error/:error_id/statistics', function(req, res){
 			connection.query(queryString, [key, period], function(err, rows, fields){
 				if(err) throw err;
 
-				result.tatal_error_count = rows[0].weekly_instancecount;
+				result.total_error_count = rows[0].weekly_instancecount;
 				callback(null, result);
 			});
 		},
@@ -1221,62 +1362,60 @@ app.get('/statistics/:project_id/rank_rate', function(req, res){
 	});
 });
 
-
 // 통계 페이지 error appversion & osversion
 app.get('/statistics/:project_id/error_version', function(req, res){
-	var key = req.params.project_id;
-	var result = new Object();
-	var period = 7;
+    var key = req.params.project_id;
+    var period = 7;
+    var result = new Object();
+    result.osversion = [];
+    result.appversion = [];
+    result.data = [];
 
-	res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Origin', '*');
+    var queryString = 'select osversion from instance where project_id = ? and datetime >= now() - interval ? day group by osversion';
 
-	var queryString = 'select appversion, count(*) as count ' +
-		'from instance where project_id = ? and datetime >= now() - interval ? day ' +
-		'group by appversion order by count desc';
+    connection.query(queryString,[key, period], function(err, rows, fields){
+        if(err) throw err;
 
-	connection.query(queryString, [key, period], function(err, rows, fields){
-		if(err) throw err;
+        if(rows.length === 0){
+            res.send('{}');
+        }else{
+            for(var i = 0; i < rows.length; i++){
+                result.osversion.push(rows[i].osversion);
+                async.waterfall([
+                    function(callback){
+                        var index = i;
+                        var osversion = rows[i].osversion;
+                        var queryString = 'select i2.appversion, if(i1.count is null, 0, i1.count) as count ' +
+                            'from (select osversion, appversion, count(*) as count from instance where project_id = ? and osversion = ? and datetime >= now() - interval ? day group by appversion) as i1 ' +
+                            'right outer join (select appversion, 0 as count from instance where project_id = ? and datetime >= now() - interval ? day group by appversion order by appversion desc) as i2 ' +
+                            'on i1.appversion = i2.appversion';
+                        connection.query(queryString,[key, osversion, period, key, period], function(err, rows, fields){
+                            var arr = [];
+                            arr.push(osversion);
+                            for(var j = 0; j < rows.length; j++){
+                                arr.push(rows[j].count);
+                                if(index === 0){
+                                    result.appversion.push(rows[j].appversion);
+                                }
+                            }
+                            result.data.push(arr);
 
-		if(rows.length === 0){
-			res.send('{}');
-		}
+                            callback(null, index, result);
+                        });
+                    }
 
-		var index = 0;
-		var result = new Object();
-		result.data = [];
+                ], function(err, index, result){
+                    if(err) throw err;
 
-		for(var i = 0; i < rows.length; i++){
-			async.waterfall([
-				function(callback){
-					index = i;
-					var versionArr = [];
-					versionArr.push(rows[i].appversion);
-					callback(null, index, versionArr);
-				},
-				function(index, arr, callback){
-					var queryString = 'select osversion, count(*) as count from instance where project_id = ? and appversion = ? and datetime >= now() - interval ? day group by osversion order by count';
-					connection.query(queryString, [key, arr[0], period], function(err, rows, fields){
-						if(err) throw err;
+                    if(index === rows.length - 1){
+                        res.send(result);
+                    }
 
-						for(var j = 0; j <rows.length; j++){
-							var element = new Object();
-							element.osversion = rows[j].osversion;
-							element.count = rows[j].count;
-							arr.push(element);
-						}
-						console.log(arr);
-						callback(null, index, arr);
-					});
-				}
-			], function(err, index, arr){
-				result.data.push(arr);
-				console.log(result);
-				if(index === (rows.length - 1)){
-					res.send(result);
-				}
-			});
-		}
-	});
+                });
+            }
+        }
+    });
 });
 
 // proguard list
@@ -1358,3 +1497,9 @@ app.post('/project/add', function(req, res){
 	});
 });
 
+app.post('/project/:project_id/errors_filtered', function(req, res){
+    var key = req.params.project_id;
+    var body = req.body;
+
+    res.send(body);
+});
