@@ -4,8 +4,8 @@ var config = require('./../config/config.js');
 var async = require('async');
 var bodyParser = require('body-parser');
 var app = express();
-//var https = require('https');
-//var fs = require('fs');
+var https = require('https');
+var fs = require('fs');
 app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
@@ -210,7 +210,6 @@ app.get('/project/:project_id/weekly_appruncount2', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-		console.log(rows);
 		var result = new Object();
 		var weeklyArr = [];
 
@@ -300,7 +299,6 @@ app.get('/project/:project_id/most/sessionbyappver', function(req, res){
 
 		res.header('Access-Control-Allow-Origin', '*');
 		var result = new Object();
-		console.log(rows.length);
 		if(rows.length === 0){
 			result.appversion = 'unknown';
 		}else{
@@ -643,7 +641,6 @@ app.get('/project/:project_id/filters', function(req, res){
 			var key = req.params.project_id;
 
 			connection.query(queryString, [key, period], function(err, rows, fields){
-				console.log(rows);
 				result.filter_devices = rows;
 				callback(null, result);
 			});
@@ -728,10 +725,6 @@ app.get('/project/:project_id/filters2', function(req, res){
                 var len = rows.length;
 				if(len < 4){
 					for(var i=0; i< 4 - len; i++){
-                        console.log(4-len);
-                        console.log(i);
-                        console.log(len);
-                        console.log();
 						var element = new Object();
 						element.appversion = 0;
 						element.count = 0;
@@ -957,7 +950,6 @@ app.get('/error/:error_id/daily_errorcount', function(req, res){
 		if(err) throw err;
 
 		res.header('Access-Control-Allow-Origin', '*');
-		console.log(rows);
 		var result = new Object();
 		var weeklyArr = [];
 
@@ -1452,9 +1444,67 @@ app.get('/proguard/:project_id', function(req, res){
 });
 
 app.post('/project/:project_id/errors/filtered', function(req, res){
-	var key = req.params.project_id;
-	var body = req.body;
+    var key = req.params.project_id;
+    var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
+        'from error ' +
+        'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
+        'order by rank desc, numofinstances desc limit 50';
 
+
+    connection.query(queryString, [key], function (err, rows, fields) {
+        if (err) throw err;
+
+        var json = new Object();
+        var errorsArr = [];
+
+        if(rows.length === 0){
+            res.send('{}');
+        }
+
+        for(var i = 0; i <rows.length; i++){
+            var element = new Object();
+
+            //waterfall로 query문 순차 처리
+            async.waterfall([
+                    function(callback){
+                        element.id = rows[i].id;
+                        element.rank = rows[i].rank;
+                        element.numofinstance = rows[i].numofinstances;
+                        element.errorname = rows[i].errorname;
+                        element.errorclassname = rows[i].errorclassname;
+                        element.linenum = rows[i].linenum;
+                        element.status = rows[i].status;
+                        element.update_date = rows[i].update_date;
+                        callback(null, i, element);
+                    },
+
+                    //tag 정보 추가
+                    function(index, element, callback){
+                        var queryString = 'select tag from tag where error_id = ?';
+                        connection.query(queryString, [element.id], function(err, rows, fields){
+                            if(rows.length != 0){
+                                element.tags = rows;
+                            }
+                            callback(null, index, element);
+                        });
+                    }],
+                function(err, index, result){
+                    if(err) throw err;
+
+                    errorsArr.push(result);
+
+                    //error 리스트가 끝나면 json 보냄
+                    if(index == (rows.length - 1))
+                    {
+                        json.errors = errorsArr;
+                        res.send(json);
+                    }
+                });
+        }
+    });
+
+
+    var body = req.body;
 	res.send(body);
 });
 
@@ -1510,26 +1560,7 @@ app.post('/project/add', function(req, res){
 app.post('/project/:project_id/errors_filtered', function(req, res){
     var key = req.params.project_id;
     var body = req.body;
-
+    res.header('Access-Control-Allow-Origin', '*');
     res.send(body);
 });
 
-// SESSION
-app.post('/api/v2/client/exception', function(req, res) {
-  // TODO : Handle data from client
-  // REFERENCE : https://github.com/UrQA/Api_Backand/blob/master/controllers/url_control.js#L24
-  var result = {
-    'state': 'success'
-  };
-  res.send(result);
-});
-
-// SESSION
-app.post('/urqa/client/connect', function(req, res) {
-  // TODO : Handle data from client
-  // REFERENCE : https://github.com/UrQA/Api_Backand/blob/master/controllers/url_control.js#L24
-  var result = {
-    'state': 'success'
-  };
-  res.send(result);
-});
