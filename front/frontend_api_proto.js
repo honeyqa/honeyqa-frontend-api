@@ -1,6 +1,6 @@
 var md5 = require('md5');
 var express = require('express');
-var config = require('./config.js');
+var config = require('./../config.js');
 var async = require('async');
 var bodyParser = require('body-parser');
 var app = express();
