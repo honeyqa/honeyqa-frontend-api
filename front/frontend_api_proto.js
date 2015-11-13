@@ -59,12 +59,13 @@ app.get('/user/:user_id', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else{
+            var result = new Object();
+            result = rows[0];
 
-		var result = new Object();
-		result = rows[0];
+            res.send(result);
+        }
 
-		res.send(result);
 	});
 });
 
@@ -85,54 +86,55 @@ app.get('/projects/:user_id', function(req, res){
 
 				if(rows.length === 0){
 					res.send('{}');
-				}
+				}else {
 
-                var json = new Object();
-                var projectsArr = [];
+                    var json = new Object();
+                    var projectsArr = [];
 
-                for(var i = 0; i <rows.length; i++) {
-                    var element = new Object();
+                    for (var i = 0; i < rows.length; i++) {
+                        var element = new Object();
 
-                    //waterfall로 query문 순차 처리
-                    async.waterfall([
-                            function (callback) {
-                                element.id = rows[i].id;
-                                element.title = rows[i].title;
-                                element.apikey = rows[i].apikey;
-                                element.platform = rows[i].platform;
-                                element.category = rows[i].category;
-                                element.stage = rows[i].stage;
-                                element.timezone = rows[i].timezone;
-                                element.datetime = rows[i].datetime;
-                                callback(null, i, element);
-                            },
+                        //waterfall로 query문 순차 처리
+                        async.waterfall([
+                                function (callback) {
+                                    element.id = rows[i].id;
+                                    element.title = rows[i].title;
+                                    element.apikey = rows[i].apikey;
+                                    element.platform = rows[i].platform;
+                                    element.category = rows[i].category;
+                                    element.stage = rows[i].stage;
+                                    element.timezone = rows[i].timezone;
+                                    element.datetime = rows[i].datetime;
+                                    callback(null, i, element);
+                                },
 
-                            //weekly error count 정보 추가
-                            function (index, element, callback) {
-                                var queryString = 'select count(*) as weekly_instancecount ' +
-									'from instance ' +
-									'where project_id = ? and datetime >= now() - interval 1 week';
-                                connection.query(queryString, [element.id], function (err, rows, fields) {
-                                    if (rows.length != 0) {
-                                        element.weekly_errorcount = rows[0].weekly_instancecount;
-                                    } else {
-                                        element.weekly_errorcount = 0;
-                                    }
-                                    callback(null, index, element);
-                                });
-                            }
-                        ],
-                        function (err, index, result) {
-                            if (err) throw err;
+                                //weekly error count 정보 추가
+                                function (index, element, callback) {
+                                    var queryString = 'select count(*) as weekly_instancecount ' +
+                                        'from instance ' +
+                                        'where project_id = ? and datetime >= now() - interval 1 week';
+                                    connection.query(queryString, [element.id], function (err, rows, fields) {
+                                        if (rows.length != 0) {
+                                            element.weekly_errorcount = rows[0].weekly_instancecount;
+                                        } else {
+                                            element.weekly_errorcount = 0;
+                                        }
+                                        callback(null, index, element);
+                                    });
+                                }
+                            ],
+                            function (err, index, result) {
+                                if (err) throw err;
 
-                            projectsArr.push(result);
+                                projectsArr.push(result);
 
-                            //project 리스트가 끝나면 json 보냄
-                            if (index == (rows.length - 1)) {
-                                json.projects = projectsArr;
-                                res.send(json);
-                            }
-                        });
+                                //project 리스트가 끝나면 json 보냄
+                                if (index == (rows.length - 1)) {
+                                    json.projects = projectsArr;
+                                    res.send(json);
+                                }
+                            });
+                    }
                 }
             });
         },
@@ -159,12 +161,13 @@ app.get('/project/:project_id', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-        var result = new Object();
-        result = rows[0];
+            var result = new Object();
+            result = rows[0];
 
-        res.send(result);
+            res.send(result);
+        }
     });
 });
 
@@ -440,48 +443,47 @@ app.get('/project/:project_id/errors', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
+            for (var i = 0; i < rows.length; i++) {
+                var element = new Object();
 
-		for(var i = 0; i <rows.length; i++){
-			var element = new Object();
+                //waterfall로 query문 순차 처리
+                async.waterfall([
+                        function (callback) {
+                            element.id = rows[i].id;
+                            element.rank = rows[i].rank;
+                            element.numofinstance = rows[i].numofinstances;
+                            element.errorname = rows[i].errorname;
+                            element.errorclassname = rows[i].errorclassname;
+                            element.linenum = rows[i].linenum;
+                            element.status = rows[i].status;
+                            element.update_date = rows[i].update_date;
+                            callback(null, i, element);
+                        },
 
-			//waterfall로 query문 순차 처리
-			async.waterfall([
-					function(callback){
-						element.id = rows[i].id;
-						element.rank = rows[i].rank;
-						element.numofinstance = rows[i].numofinstances;
-						element.errorname = rows[i].errorname;
-						element.errorclassname = rows[i].errorclassname;
-						element.linenum = rows[i].linenum;
-						element.status = rows[i].status;
-						element.update_date = rows[i].update_date;
-						callback(null, i, element);
-					},
+                        //tag 정보 추가
+                        function (index, element, callback) {
+                            var queryString = 'select tag from tag where error_id = ?';
+                            connection.query(queryString, [element.id], function (err, rows, fields) {
+                                if (rows.length != 0) {
+                                    element.tags = rows;
+                                }
+                                callback(null, index, element);
+                            });
+                        }],
+                    function (err, index, result) {
+                        if (err) throw err;
 
-					//tag 정보 추가
-					function(index, element, callback){
-						var queryString = 'select tag from tag where error_id = ?';
-						connection.query(queryString, [element.id], function(err, rows, fields){
-							if(rows.length != 0){
-								element.tags = rows;
-							}
-							callback(null, index, element);
-						});
-					}],
-				function(err, index, result){
-					if(err) throw err;
+                        errorsArr.push(result);
 
-					errorsArr.push(result);
-
-					//error 리스트가 끝나면 json 보냄
-					if(index == (rows.length - 1))
-					{
-						json.errors = errorsArr;
-						res.send(json);
-					}
-				});
-		}
+                        //error 리스트가 끝나면 json 보냄
+                        if (index == (rows.length - 1)) {
+                            json.errors = errorsArr;
+                            res.send(json);
+                        }
+                    });
+            }
+        }
 	});
 });
 
@@ -503,48 +505,48 @@ app.get('/project/:project_id/errors_tranding', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		for(var i = 0; i <rows.length; i++){
-			var element = new Object();
+            for (var i = 0; i < rows.length; i++) {
+                var element = new Object();
 
-			//waterfall로 query문 순차 처리
-			async.waterfall([
-					function(callback){
-						element.id = rows[i].id;
-						element.rank = rows[i].rank;
-						element.numofinstance = rows[i].numofinstances;
-						element.errorname = rows[i].errorname;
-						element.errorclassname = rows[i].errorclassname;
-						element.linenum = rows[i].linenum;
-						element.status = rows[i].status;
-						element.update_date = rows[i].update_date;
-						callback(null, i, element);
-					},
+                //waterfall로 query문 순차 처리
+                async.waterfall([
+                        function (callback) {
+                            element.id = rows[i].id;
+                            element.rank = rows[i].rank;
+                            element.numofinstance = rows[i].numofinstances;
+                            element.errorname = rows[i].errorname;
+                            element.errorclassname = rows[i].errorclassname;
+                            element.linenum = rows[i].linenum;
+                            element.status = rows[i].status;
+                            element.update_date = rows[i].update_date;
+                            callback(null, i, element);
+                        },
 
-					//tag 정보 추가
-					function(index, element, callback){
-						var queryString = 'select tag from tag where error_id = ?';
-						connection.query(queryString, [element.id], function(err, rows, fields){
-							if(rows.length != 0){
-								element.tags = rows;
-							}
-							callback(null, index, element);
-						});
-					}],
-				function(err, index, result){
-					if(err) throw err;
+                        //tag 정보 추가
+                        function (index, element, callback) {
+                            var queryString = 'select tag from tag where error_id = ?';
+                            connection.query(queryString, [element.id], function (err, rows, fields) {
+                                if (rows.length != 0) {
+                                    element.tags = rows;
+                                }
+                                callback(null, index, element);
+                            });
+                        }],
+                    function (err, index, result) {
+                        if (err) throw err;
 
-					errorsArr.push(result);
+                        errorsArr.push(result);
 
-					//error 리스트가 끝나면 json 보냄
-					if(index == (rows.length - 1))
-					{
-						json.errors = errorsArr;
-						res.send(json);
-					}
-				});
-		}
+                        //error 리스트가 끝나면 json 보냄
+                        if (index == (rows.length - 1)) {
+                            json.errors = errorsArr;
+                            res.send(json);
+                        }
+                    });
+            }
+        }
 
 	});
 });
@@ -567,48 +569,48 @@ app.get('/project/:project_id/errors_latest', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		for(var i = 0; i <rows.length; i++){
-			var element = new Object();
+            for (var i = 0; i < rows.length; i++) {
+                var element = new Object();
 
-			//waterfall로 query문 순차 처리
-			async.waterfall([
-					function(callback){
-						element.id = rows[i].id;
-						element.rank = rows[i].rank;
-						element.numofinstance = rows[i].numofinstances;
-						element.errorname = rows[i].errorname;
-						element.errorclassname = rows[i].errorclassname;
-						element.linenum = rows[i].linenum;
-						element.status = rows[i].status;
-						element.update_date = rows[i].update_date;
-						callback(null, i, element);
-					},
+                //waterfall로 query문 순차 처리
+                async.waterfall([
+                        function (callback) {
+                            element.id = rows[i].id;
+                            element.rank = rows[i].rank;
+                            element.numofinstance = rows[i].numofinstances;
+                            element.errorname = rows[i].errorname;
+                            element.errorclassname = rows[i].errorclassname;
+                            element.linenum = rows[i].linenum;
+                            element.status = rows[i].status;
+                            element.update_date = rows[i].update_date;
+                            callback(null, i, element);
+                        },
 
-					//tag 정보 추가
-					function(index, element, callback){
-						var queryString = 'select tag from tag where error_id = ?';
-						connection.query(queryString, [element.id], function(err, rows, fields){
-							if(rows.length != 0){
-								element.tags = rows;
-							}
-							callback(null, index, element);
-						});
-					}],
-				function(err, index, result){
-					if(err) throw err;
+                        //tag 정보 추가
+                        function (index, element, callback) {
+                            var queryString = 'select tag from tag where error_id = ?';
+                            connection.query(queryString, [element.id], function (err, rows, fields) {
+                                if (rows.length != 0) {
+                                    element.tags = rows;
+                                }
+                                callback(null, index, element);
+                            });
+                        }],
+                    function (err, index, result) {
+                        if (err) throw err;
 
-					errorsArr.push(result);
+                        errorsArr.push(result);
 
-					//error 리스트가 끝나면 json 보냄
-					if(index == (rows.length - 1))
-					{
-						json.errors = errorsArr;
-						res.send(json);
-					}
-				});
-		}
+                        //error 리스트가 끝나면 json 보냄
+                        if (index == (rows.length - 1)) {
+                            json.errors = errorsArr;
+                            res.send(json);
+                        }
+                    });
+            }
+        }
 	});
 });
 
@@ -865,10 +867,11 @@ app.get('/error/:error_id',function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = rows[0];
-		res.send(result);
+            var result = rows[0];
+            res.send(result);
+        }
 	});
 
 });
@@ -886,10 +889,11 @@ app.get('/error/:error_id/tags', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = rows;
-		res.send(result);
+            var result = rows;
+            res.send(result);
+        }
 	});
 });
 
@@ -906,10 +910,11 @@ app.get('/error/:error_id/callstack', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = rows[0];
-		res.send(result);
+            var result = rows[0];
+            res.send(result);
+        }
 	});
 });
 
@@ -932,10 +937,11 @@ app.get('/error/:error_id/instances',function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = rows;
-		res.send(result);
+            var result = rows;
+            res.send(result);
+        }
 	});
 });
 
@@ -980,10 +986,11 @@ app.get('/instance/:instance_id/eventpath', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = rows[0];
-		res.send(result);
+            var result = rows[0];
+            res.send(result);
+        }
 	});
 });
 
@@ -1197,12 +1204,13 @@ app.get('/statistics/:project_id/device', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1223,12 +1231,13 @@ app.get('/statistics/:project_id/osversion', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1248,12 +1257,13 @@ app.get('/statistics/:project_id/osversion_rank', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1273,12 +1283,13 @@ app.get('/statistics/:project_id/country', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1299,12 +1310,13 @@ app.get('/statistics/:project_id/lastactivity', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1325,12 +1337,13 @@ app.get('/statistics/:project_id/errorclassname', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1352,12 +1365,13 @@ app.get('/statistics/:project_id/rank_rate', function(req, res){
 
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
@@ -1434,24 +1448,125 @@ app.get('/proguard/:project_id', function(req, res){
 		res.header('Access-Control-Allow-Origin', '*');
 		if(rows.length === 0){
 			res.send('{}');
-		}
+		}else {
 
-		var result = new Object();
-		result = rows;
+            var result = new Object();
+            result = rows;
 
-		res.send(result);
+            res.send(result);
+        }
 	});
 });
 
 app.post('/project/:project_id/errors/filtered', function(req, res){
     var key = req.params.project_id;
+    var body = req.body;
+    console.log(body);
+
     var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
-        'from error ' +
-        'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
-        'order by rank desc, numofinstances desc limit 50';
+    'from error where '+
+    'id = any(select error_id from instance where project_id = ? ';
 
+    // instance table query
+    if(body.country.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.country.length; i++){
+            if(body.country[i] === 'all' || body.country[i] === 'Others'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
+                }else{
+                    temp += 'or country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
+                }
+            }
+        }
+        queryString += temp;
+    }
+    if(body.appversion.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.appversion.length; i++){
+            if(body.appversion[i] === 'all' || body.appversion[i] === 'Others'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and appversion = \''+ body.appversion[i] +'\' ';
+                }else{
+                    temp += 'or appversion = \''+ body.appversion[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+    if(body.osversion.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.osversion.length; i++){
+            if(body.osversion[i] === 'all' || body.osversion[i] === 'Others'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and osversion = \''+ body.osversion[i] +'\' ';
+                }else{
+                    temp += 'or osversion = \''+ body.osversion[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+    queryString += ') ';
 
-    connection.query(queryString, [key], function (err, rows, fields) {
+    // error table query
+    if(body.rank.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.rank.length; i++){
+            if(body.rank[i] === 'all'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and rank = \''+ body.rank[i] +'\' ';
+                }else{
+                    temp += 'or rank = \''+ body.rank[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+
+    if(body.status.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.status.length; i++){
+            if(body.status[i] === 'all'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and status = \''+ body.status[i] +'\' ';
+                }else{
+                    temp += 'or status = \''+ body.status[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+
+    // period query
+    if(body.start > 1) {
+        queryString += 'and update_date >= now() - interval ' + (body.start - 1) + ' day ';
+    }
+    if(body.end > 1){
+        queryString += 'and update_date <= now() - interval ' + (body.end - 1) +' day ';
+    }else{
+        queryString += 'and date(update_date) >= date(now()) ';
+    }
+    queryString += 'order by rank desc, status desc, numofinstances desc limit 50';
+    // query 실행
+
+    console.log(queryString);
+    connection.query(queryString, [key, body.start, body.end], function (err, rows, fields) {
         if (err) throw err;
 
         var json = new Object();
@@ -1459,60 +1574,208 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
 
         if(rows.length === 0){
             res.send('{}');
-        }
+        }else {
 
-        for(var i = 0; i <rows.length; i++){
-            var element = new Object();
+            for (var i = 0; i < rows.length; i++) {
+                var element = new Object();
+                //waterfall로 query문 순차 처리
+                async.waterfall([
+                        function (callback) {
+                            element.id = rows[i].id;
+                            element.rank = rows[i].rank;
+                            element.numofinstance = rows[i].numofinstances;
+                            element.errorname = rows[i].errorname;
+                            element.errorclassname = rows[i].errorclassname;
+                            element.linenum = rows[i].linenum;
+                            element.status = rows[i].status;
+                            element.update_date = rows[i].update_date;
+                            callback(null, i, element);
+                        },
 
-            //waterfall로 query문 순차 처리
-            async.waterfall([
-                    function(callback){
-                        element.id = rows[i].id;
-                        element.rank = rows[i].rank;
-                        element.numofinstance = rows[i].numofinstances;
-                        element.errorname = rows[i].errorname;
-                        element.errorclassname = rows[i].errorclassname;
-                        element.linenum = rows[i].linenum;
-                        element.status = rows[i].status;
-                        element.update_date = rows[i].update_date;
-                        callback(null, i, element);
-                    },
+                        //tag 정보 추가
+                        function (index, element, callback) {
+                            var queryString = 'select tag from tag where error_id = ?';
+                            connection.query(queryString, [element.id], function (err, rows, fields) {
+                                if (rows.length != 0) {
+                                    element.tags = rows;
+                                }
+                                callback(null, index, element);
+                            });
+                        }],
+                    function (err, index, result) {
+                        if (err) throw err;
 
-                    //tag 정보 추가
-                    function(index, element, callback){
-                        var queryString = 'select tag from tag where error_id = ?';
-                        connection.query(queryString, [element.id], function(err, rows, fields){
-                            if(rows.length != 0){
-                                element.tags = rows;
-                            }
-                            callback(null, index, element);
-                        });
-                    }],
-                function(err, index, result){
-                    if(err) throw err;
+                        errorsArr.push(result);
 
-                    errorsArr.push(result);
-
-                    //error 리스트가 끝나면 json 보냄
-                    if(index == (rows.length - 1))
-                    {
-                        json.errors = errorsArr;
-                        res.send(json);
-                    }
-                });
+                        //error 리스트가 끝나면 json 보냄
+                        if (index == (rows.length - 1)) {
+                            json.errors = errorsArr;
+                            res.send(json);
+                        }
+                    });
+            }
         }
     });
-
-
-    var body = req.body;
-	res.send(body);
 });
 
 app.post('/project/:project_id/errors/filtered/latest', function(req, res){
-	var key = req.params.project_id;
-	var body = req.body;
+    var key = req.params.project_id;
+    var body = req.body;
+    console.log(body);
 
-	res.send(body);
+    var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
+        'from error where '+
+        'id = any(select error_id from instance where project_id = ? ';
+
+    // instance table query
+    if(body.country.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.country.length; i++){
+            if(body.country[i] === 'all' || body.country[i] === 'Others'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
+                }else{
+                    temp += 'or country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
+                }
+            }
+        }
+        queryString += temp;
+    }
+    if(body.appversion.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.appversion.length; i++){
+            if(body.appversion[i] === 'all' || body.appversion[i] === 'Others'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and appversion = \''+ body.appversion[i] +'\' ';
+                }else{
+                    temp += 'or appversion = \''+ body.appversion[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+    if(body.osversion.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.osversion.length; i++){
+            if(body.osversion[i] === 'all' || body.osversion[i] === 'Others'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and osversion = \''+ body.osversion[i] +'\' ';
+                }else{
+                    temp += 'or osversion = \''+ body.osversion[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+    queryString += ') ';
+
+    // error table query
+    if(body.rank.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.rank.length; i++){
+            if(body.rank[i] === 'all'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and rank = \''+ body.rank[i] +'\' ';
+                }else{
+                    temp += 'or rank = \''+ body.rank[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+
+    if(body.status.length != 0){
+        var temp = '';
+        for(var i = 0; i < body.status.length; i++){
+            if(body.status[i] === 'all'){
+                temp = '';
+                break;
+            }else{
+                if(temp === ''){
+                    temp += 'and status = \''+ body.status[i] +'\' ';
+                }else{
+                    temp += 'or status = \''+ body.status[i] +'\' ';
+                }
+            }
+        }
+        queryString += temp;
+    }
+
+    // period query
+    if(body.start > 1) {
+        queryString += 'and update_date >= now() - interval ' + (body.start - 1) + ' day ';
+    }
+    if(body.end > 1){
+        queryString += 'and update_date <= now() - interval ' + (body.end - 1) +' day ';
+    }else{
+        queryString += 'and date(update_date) >= date(now()) ';
+    }
+    queryString += 'order by update_date desc, rank desc, numofinstances desc limit 50';
+    // query 실행
+
+    console.log(queryString);
+    connection.query(queryString, [key, body.start, body.end], function (err, rows, fields) {
+        if (err) throw err;
+
+        var json = new Object();
+        var errorsArr = [];
+
+        if(rows.length === 0){
+            res.send('{}');
+        }else {
+
+            for (var i = 0; i < rows.length; i++) {
+                var element = new Object();
+                //waterfall로 query문 순차 처리
+                async.waterfall([
+                        function (callback) {
+                            element.id = rows[i].id;
+                            element.rank = rows[i].rank;
+                            element.numofinstance = rows[i].numofinstances;
+                            element.errorname = rows[i].errorname;
+                            element.errorclassname = rows[i].errorclassname;
+                            element.linenum = rows[i].linenum;
+                            element.status = rows[i].status;
+                            element.update_date = rows[i].update_date;
+                            callback(null, i, element);
+                        },
+
+                        //tag 정보 추가
+                        function (index, element, callback) {
+                            var queryString = 'select tag from tag where error_id = ?';
+                            connection.query(queryString, [element.id], function (err, rows, fields) {
+                                if (rows.length != 0) {
+                                    element.tags = rows;
+                                }
+                                callback(null, index, element);
+                            });
+                        }],
+                    function (err, index, result) {
+                        if (err) throw err;
+
+                        errorsArr.push(result);
+
+                        //error 리스트가 끝나면 json 보냄
+                        if (index == (rows.length - 1)) {
+                            json.errors = errorsArr;
+                            res.send(json);
+                        }
+                    });
+            }
+        }
+    });
 });
 
 
@@ -1529,32 +1792,32 @@ app.post('/project/add', function(req, res){
 	if(!body.hasOwnProperty('appname') || !body.hasOwnProperty('platform') || !body.hasOwnProperty('category') || !body.hasOwnProperty('stage') || !body.hasOwnProperty('user_id')){
 		res.status(500);
 		res.send('{}');
-	}
+	}else {
+        var title = body.appname;
+        var platform = parseInt(body.platform);
+        var category = parseInt(body.category);
+        var stage = parseInt(body.stage);
+        var user_id = parseInt(body.user_id);
+        var today = new Date();
+        var apikey = md5(user_id + title + today + 'honey' + Math.floor(Math.random() * 100)).substr(0, 8);
 
-	var title = body.appname;
-	var platform = parseInt(body.platform);
-	var category = parseInt(body.category);
-	var stage = parseInt(body.stage);
-	var user_id = parseInt(body.user_id);
-	var today = new Date();
-	var apikey = md5(user_id + title + today + 'honey' + Math.floor(Math.random() * 100)).substr(0, 8);
+        var timezone = 'Asiz/Seoul';
+        var queryString = 'insert into ' +
+            'project (apikey, platform, title, category, stage, timezone, datetime, user_id) ' +
+            'values (?,?,?,?,?,?,now(),?)';
 
-	var timezone = 'Asiz/Seoul';
-	var queryString = 'insert into ' +
-		'project (apikey, platform, title, category, stage, timezone, datetime, user_id) ' +
-		'values (?,?,?,?,?,?,now(),?)';
-
-	connection.query(queryString, [apikey, platform, title, category, stage, timezone, user_id], function(err, rows, fields){
-		if(err){
-			res.status(500);
-			res.send('{}');
-			throw err;
-		}else{
-			var result = new Object();
-			result.project_id = rows.insertId;
-			res.send(result);
-		}
-	});
+        connection.query(queryString, [apikey, platform, title, category, stage, timezone, user_id], function (err, rows, fields) {
+            if (err) {
+                res.status(500);
+                res.send('{}');
+                throw err;
+            } else {
+                var result = new Object();
+                result.project_id = rows.insertId;
+                res.send(result);
+            }
+        });
+    }
 });
 
 app.post('/project/:project_id/errors_filtered', function(req, res){
