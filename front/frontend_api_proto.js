@@ -1,6 +1,6 @@
 var md5 = require('md5');
 var express = require('express');
-var config = require('./../config/config.js');
+var config = require('./config.js');
 var async = require('async');
 var bodyParser = require('body-parser');
 var app = express();
@@ -1220,7 +1220,7 @@ app.get('/statistics/:project_id/osversion', function(req, res){
 	var queryString = 'select osversion, count(*) as count ' +
 		'from instance ' +
 		'where project_id = ? and datetime >= now() - interval ? day ' +
-		'group by osversion';
+		'group by osversion order by count desc';
 	var result = new Object();
 	var period = 7;
 
@@ -1248,7 +1248,7 @@ app.get('/statistics/:project_id/osversion_rank', function(req, res){
 	var queryString = 'select instance.osversion, error.rank, count(rank) as rank_count ' +
 		'from instance, error ' +
 		'where instance.project_id = ? and instance.error_id = error.id and datetime >= now() - interval ? day ' +
-		'group by appversion';
+		'group by appversion order by osversion';
 
 	connection.query(queryString, [key, period], function(err, rows, fields){
 		if(err) throw err;
@@ -1401,7 +1401,7 @@ app.get('/statistics/:project_id/error_version', function(req, res){
                         var osversion = rows[i].osversion;
                         var queryString = 'select i2.appversion, if(i1.count is null, 0, i1.count) as count ' +
                             'from (select osversion, appversion, count(*) as count from instance where project_id = ? and osversion = ? and datetime >= now() - interval ? day group by appversion) as i1 ' +
-                            'right outer join (select appversion, 0 as count from instance where project_id = ? and datetime >= now() - interval ? day group by appversion order by appversion desc) as i2 ' +
+                            'right outer join (select appversion, if(count(*) != 0, count(*), 0) as count from instance where project_id = ? and datetime >= now() - interval ? day group by appversion order by count desc limit 5) as i2 ' +
                             'on i1.appversion = i2.appversion';
                         connection.query(queryString,[key, osversion, period, key, period], function(err, rows, fields){
                             var arr = [];
