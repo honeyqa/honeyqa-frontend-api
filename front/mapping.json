@@ -1,0 +1,16 @@
+{
+  "rank": {
+    "unhandler": 0,
+    "native": 1,
+    "critical": 2,
+    "major": 3,
+    "minor": 4
+  },
+
+  "status": {
+    "new": 0,
+    "open": 1,
+    "fixed": 2,
+    "ignore": 3
+  }
+}

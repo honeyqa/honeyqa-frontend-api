@@ -7,6 +7,7 @@ var app = express();
 var mysql = require('mysql');
 var https = require('https');
 var fs = require('fs');
+var mapping = require('./mapping.json');
 app.use(bodyParser.urlencoded());
 app.use(bodyParser.json());
 
@@ -64,7 +65,6 @@ app.get('/user/:user_id', function(req, res){
 		});
 	});
 });
-
 
 // 유저의 프로젝트 리스트
 app.get('/projects/:user_id', function(req, res){
@@ -708,6 +708,7 @@ app.get('/project/:project_id/errors_latest', function(req, res){
 		});
 	});
 });
+
 
 // 프로젝트의 필터 요소
 app.get('/project/:project_id/filters', function(req, res){
@@ -1691,7 +1692,7 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
     if(body.country.length != 0){
         var temp = '';
         for(var i = 0; i < body.country.length; i++){
-            if(body.country[i] === 'all' || body.country[i] === 'Others'){
+            if(body.country[i] === 'all'){
                 temp = '';
                 break;
             }else{
@@ -1707,10 +1708,15 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
     if(body.appversion.length != 0){
         var temp = '';
         for(var i = 0; i < body.appversion.length; i++){
-            if(body.appversion[i] === 'all' || body.appversion[i] === 'Others'){
+            if(body.appversion[i] === 'all'){
                 temp = '';
                 break;
-            }else{
+            }else if(body.appversion[i] === 'Others') {
+				continue;
+			}else{
+				if(body.appversion[i] === 'Others') {
+					continue;
+				}
                 if(temp === ''){
                     temp += 'and appversion = \''+ body.appversion[i] +'\' ';
                 }else{
@@ -1723,10 +1729,12 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
     if(body.osversion.length != 0){
         var temp = '';
         for(var i = 0; i < body.osversion.length; i++){
-            if(body.osversion[i] === 'all' || body.osversion[i] === 'Others'){
+            if(body.osversion[i] === 'all'){
                 temp = '';
                 break;
-            }else{
+            }else if(body.osversion[i] === 'Others') {
+				continue;
+			}else{
                 if(temp === ''){
                     temp += 'and osversion = \''+ body.osversion[i] +'\' ';
                 }else{
@@ -1747,9 +1755,10 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and rank = \''+ body.rank[i] +'\' ';
+					var key = body.rank[i];
+                    temp += 'and rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }else{
-                    temp += 'or rank = \''+ body.rank[i] +'\' ';
+                    temp += 'or rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }
             }
         }
@@ -1764,9 +1773,9 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and status = \''+ body.status[i] +'\' ';
+                    temp += 'and status = \''+ mapping.status[body.status[i]] +'\' ';
                 }else{
-                    temp += 'or status = \''+ body.status[i] +'\' ';
+                    temp += 'or status = \''+ mapping.status[body.status[i]] +'\' ';
                 }
             }
         }
@@ -1775,10 +1784,10 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
 
     // period query
     if(body.start > 1) {
-        queryString += 'and update_date >= now() - interval ' + (body.start - 1) + ' day ';
+        queryString += 'and update_date <= now() - interval ' + (body.start - 1) + ' day ';
     }
     if(body.end > 1){
-        queryString += 'and update_date <= now() - interval ' + (body.end - 1) +' day ';
+        queryString += 'and update_date >= now() - interval ' + (body.end - 1) +' day ';
     }else{
         queryString += 'and date(update_date) >= date(now()) ';
     }
@@ -1805,42 +1814,42 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
 					var element = new Object();
 					//waterfall로 query문 순차 처리
 					async.waterfall([
-							function (callback) {
-								element.id = rows[i].id;
-								element.rank = rows[i].rank;
-								element.numofinstance = rows[i].numofinstances;
-								element.errorname = rows[i].errorname;
-								element.errorclassname = rows[i].errorclassname;
-								element.linenum = rows[i].linenum;
-								element.status = rows[i].status;
-								element.update_date = rows[i].update_date;
-								callback(null, i, element);
-							},
+						function (callback) {
+							element.id = rows[i].id;
+							element.rank = rows[i].rank;
+							element.numofinstance = rows[i].numofinstances;
+							element.errorname = rows[i].errorname;
+							element.errorclassname = rows[i].errorclassname;
+							element.linenum = rows[i].linenum;
+							element.status = rows[i].status;
+							element.update_date = rows[i].update_date;
+							callback(null, i, element);
+						},
 
-							//tag 정보 추가
-							function (index, element, callback) {
-								var queryString = 'select tag from tag where error_id = ?';
-								connection.query(queryString, [element.id], function (err, rows, fields) {
-									if (rows.length != 0) {
-										element.tags = rows;
-									}
-									callback(null, index, element);
-								});
-							}],
-						function (err, index, result) {
-							if (err){
-								connection.release();
-								throw err;
-							}
-							errorsArr.push(result);
+						//tag 정보 추가
+						function (index, element, callback) {
+							var queryString = 'select tag from tag where error_id = ?';
+							connection.query(queryString, [element.id], function (err, rows, fields) {
+								if (rows.length != 0) {
+									element.tags = rows;
+								}
+								callback(null, index, element);
+							});
+						}],
+					function (err, index, result) {
+						if (err){
+							connection.release();
+							throw err;
+						}
+						errorsArr.push(result);
 
-							//error 리스트가 끝나면 json 보냄
-							if (index == (rows.length - 1)) {
-								json.errors = errorsArr;
-								res.send(json);
-								connection.release();
-							}
-						});
+						//error 리스트가 끝나면 json 보냄
+						if (index == (rows.length - 1)) {
+							json.errors = errorsArr;
+							res.send(json);
+							connection.release();
+						}
+					});
 				}
 			}
 		});
@@ -1860,7 +1869,7 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
     if(body.country.length != 0){
         var temp = '';
         for(var i = 0; i < body.country.length; i++){
-            if(body.country[i] === 'all' || body.country[i] === 'Others'){
+            if(body.country[i] === 'all'){
                 temp = '';
                 break;
             }else{
@@ -1876,10 +1885,12 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
     if(body.appversion.length != 0){
         var temp = '';
         for(var i = 0; i < body.appversion.length; i++){
-            if(body.appversion[i] === 'all' || body.appversion[i] === 'Others'){
+            if(body.appversion[i] === 'all'){
                 temp = '';
                 break;
-            }else{
+            }else if(body.appversion[i] === 'Others') {
+				continue;
+			}else{
                 if(temp === ''){
                     temp += 'and appversion = \''+ body.appversion[i] +'\' ';
                 }else{
@@ -1892,10 +1903,12 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
     if(body.osversion.length != 0){
         var temp = '';
         for(var i = 0; i < body.osversion.length; i++){
-            if(body.osversion[i] === 'all' || body.osversion[i] === 'Others'){
+            if(body.osversion[i] === 'all'){
                 temp = '';
                 break;
-            }else{
+            }else if(body.osversion[i] === 'Others') {
+				continue;
+			}else{
                 if(temp === ''){
                     temp += 'and osversion = \''+ body.osversion[i] +'\' ';
                 }else{
@@ -1916,9 +1929,9 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and rank = \''+ body.rank[i] +'\' ';
+                    temp += 'and rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }else{
-                    temp += 'or rank = \''+ body.rank[i] +'\' ';
+                    temp += 'or rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }
             }
         }
@@ -1933,9 +1946,9 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and status = \''+ body.status[i] +'\' ';
+                    temp += 'and status = \''+ mapping.status[body.status[i]] +'\' ';
                 }else{
-                    temp += 'or status = \''+ body.status[i] +'\' ';
+                    temp += 'or status = \''+ mapping.status[body.status[i]] +'\' ';
                 }
             }
         }
@@ -1974,42 +1987,42 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
 					var element = new Object();
 					//waterfall로 query문 순차 처리
 					async.waterfall([
-							function (callback) {
-								element.id = rows[i].id;
-								element.rank = rows[i].rank;
-								element.numofinstance = rows[i].numofinstances;
-								element.errorname = rows[i].errorname;
-								element.errorclassname = rows[i].errorclassname;
-								element.linenum = rows[i].linenum;
-								element.status = rows[i].status;
-								element.update_date = rows[i].update_date;
-								callback(null, i, element);
-							},
+						function (callback) {
+							element.id = rows[i].id;
+							element.rank = rows[i].rank;
+							element.numofinstance = rows[i].numofinstances;
+							element.errorname = rows[i].errorname;
+							element.errorclassname = rows[i].errorclassname;
+							element.linenum = rows[i].linenum;
+							element.status = rows[i].status;
+							element.update_date = rows[i].update_date;
+							callback(null, i, element);
+						},
 
-							//tag 정보 추가
-							function (index, element, callback) {
-								var queryString = 'select tag from tag where error_id = ?';
-								connection.query(queryString, [element.id], function (err, rows, fields) {
-									if (rows.length != 0) {
-										element.tags = rows;
-									}
-									callback(null, index, element);
-								});
-							}],
-						function (err, index, result) {
-							if (err){
-								connection.release();
-								throw err;
-							}
-							errorsArr.push(result);
+						//tag 정보 추가
+						function (index, element, callback) {
+							var queryString = 'select tag from tag where error_id = ?';
+							connection.query(queryString, [element.id], function (err, rows, fields) {
+								if (rows.length != 0) {
+									element.tags = rows;
+								}
+								callback(null, index, element);
+							});
+						}],
+					function (err, index, result) {
+						if (err){
+							connection.release();
+							throw err;
+						}
+						errorsArr.push(result);
 
-							//error 리스트가 끝나면 json 보냄
-							if (index == (rows.length - 1)) {
-								json.errors = errorsArr;
-								res.send(json);
-								connection.release();
-							}
-						});
+						//error 리스트가 끝나면 json 보냄
+						if (index == (rows.length - 1)) {
+							json.errors = errorsArr;
+							res.send(json);
+							connection.release();
+						}
+					});
 				}
 			}
 		});
