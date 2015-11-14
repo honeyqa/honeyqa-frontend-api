@@ -1,6 +1,6 @@
 {
   "rank": {
-    "unhandler": 0,
+    "unhandled": 0,
     "native": 1,
     "critical": 2,
     "major": 3,

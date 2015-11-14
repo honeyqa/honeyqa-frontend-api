@@ -29,7 +29,7 @@ var certificate = fs.readFileSync('crt.crt', 'utf8');
 var credentials = {key: privateKey, cert: certificate};
 
 https.createServer(credentials, app).listen(8080);
-
+//
 //var server = app.listen(8080, function(){
 //	var host = server.address().address;
 //	var port = server.address().port;
@@ -1697,11 +1697,14 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
+                    temp += 'and (country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
                 }else{
                     temp += 'or country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
                 }
             }
+			if(i === body.country.length - 1){
+				temp += ')';
+			}
         }
         queryString += temp;
     }
@@ -1712,16 +1715,19 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 temp = '';
                 break;
             }else if(body.appversion[i] === 'Others') {
+				if(i === body.appversion.length - 1){
+					temp += ')';
+				}
 				continue;
 			}else{
-				if(body.appversion[i] === 'Others') {
-					continue;
-				}
                 if(temp === ''){
-                    temp += 'and appversion = \''+ body.appversion[i] +'\' ';
+                    temp += 'and (appversion = \''+ body.appversion[i] +'\' ';
                 }else{
                     temp += 'or appversion = \''+ body.appversion[i] +'\' ';
                 }
+				if(i === body.appversion.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
@@ -1733,18 +1739,23 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 temp = '';
                 break;
             }else if(body.osversion[i] === 'Others') {
+				if(i === body.osversion.length - 1){
+					temp += ')';
+				}
 				continue;
 			}else{
                 if(temp === ''){
-                    temp += 'and osversion = \''+ body.osversion[i] +'\' ';
+                    temp += 'and (osversion = \''+ body.osversion[i] +'\' ';
                 }else{
                     temp += 'or osversion = \''+ body.osversion[i] +'\' ';
                 }
+				if(i === body.osversion.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
     }
-    queryString += ') ';
 
     // error table query
     if(body.rank.length != 0){
@@ -1755,11 +1766,13 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-					var key = body.rank[i];
-                    temp += 'and rank = \''+ mapping.rank[body.rank[i]] +'\' ';
+                    temp += 'and (rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }else{
                     temp += 'or rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }
+				if(i === body.rank.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
@@ -1773,14 +1786,18 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and status = \''+ mapping.status[body.status[i]] +'\' ';
+                    temp += 'and (status = \''+ mapping.status[body.status[i]] +'\' ';
                 }else{
                     temp += 'or status = \''+ mapping.status[body.status[i]] +'\' ';
                 }
+				if(i === body.status.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
     }
+	queryString += ') ';
 
     // period query
     if(body.start > 1) {
@@ -1874,10 +1891,13 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
+                    temp += 'and (country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
                 }else{
                     temp += 'or country = \''+ body.country[i] +'\' or country = \'' + body.country[i].toLowerCase() + '\'';
                 }
+				if(i === body.country.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
@@ -1889,13 +1909,19 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 temp = '';
                 break;
             }else if(body.appversion[i] === 'Others') {
+				if(i === body.appversion.length - 1){
+					temp += ')';
+				}
 				continue;
 			}else{
                 if(temp === ''){
-                    temp += 'and appversion = \''+ body.appversion[i] +'\' ';
+                    temp += 'and (appversion = \''+ body.appversion[i] +'\' ';
                 }else{
                     temp += 'or appversion = \''+ body.appversion[i] +'\' ';
                 }
+				if(i === body.appversion.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
@@ -1907,18 +1933,23 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 temp = '';
                 break;
             }else if(body.osversion[i] === 'Others') {
+				if(i === body.osversion.length - 1){
+					temp += ')';
+				}
 				continue;
 			}else{
                 if(temp === ''){
-                    temp += 'and osversion = \''+ body.osversion[i] +'\' ';
+                    temp += 'and (osversion = \''+ body.osversion[i] +'\' ';
                 }else{
                     temp += 'or osversion = \''+ body.osversion[i] +'\' ';
                 }
+				if(i === body.osversion.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
     }
-    queryString += ') ';
 
     // error table query
     if(body.rank.length != 0){
@@ -1929,10 +1960,13 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and rank = \''+ mapping.rank[body.rank[i]] +'\' ';
+                    temp += 'and (rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }else{
                     temp += 'or rank = \''+ mapping.rank[body.rank[i]] +'\' ';
                 }
+				if(i === body.rank.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
@@ -1946,21 +1980,26 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
                 break;
             }else{
                 if(temp === ''){
-                    temp += 'and status = \''+ mapping.status[body.status[i]] +'\' ';
+                    temp += 'and (status = \''+ mapping.status[body.status[i]] +'\' ';
                 }else{
                     temp += 'or status = \''+ mapping.status[body.status[i]] +'\' ';
                 }
+				if(i === body.status.length - 1){
+					temp += ')';
+				}
             }
         }
         queryString += temp;
     }
 
+	queryString += ') ';
+
     // period query
     if(body.start > 1) {
-        queryString += 'and update_date >= now() - interval ' + (body.start - 1) + ' day ';
+        queryString += 'and update_date <= now() - interval ' + (body.start - 1) + ' day ';
     }
     if(body.end > 1){
-        queryString += 'and update_date <= now() - interval ' + (body.end - 1) +' day ';
+        queryString += 'and update_date >= now() - interval ' + (body.end - 1) +' day ';
     }else{
         queryString += 'and date(update_date) >= date(now()) ';
     }
