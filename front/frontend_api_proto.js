@@ -29,7 +29,7 @@ var certificate = fs.readFileSync('crt.crt', 'utf8');
 var credentials = {key: privateKey, cert: certificate};
 
 https.createServer(credentials, app).listen(8080);
-//
+
 //var server = app.listen(8080, function(){
 //	var host = server.address().address;
 //	var port = server.address().port;
@@ -322,7 +322,6 @@ app.get('/project/:project_id/weekly_instancecount', function(req, res){
 	});
 });
 
-
 // 프로젝트의 일주일 세션 중 가장 많았던 앱 버전
 app.get('/project/:project_id/most/sessionbyappver', function(req, res){
 	res.header('Access-Control-Allow-Origin', '*');
@@ -501,7 +500,7 @@ app.get('/project/:project_id/errors', function(req, res){
 	var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
 		'from error ' +
 		'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
-		'order by rank desc, numofinstances desc limit 50';
+		'order by (case rank when 2 then 1 when 3 then 2 when 1 then 3 when 0 then 4 else 9 end), numofinstances desc limit 50';
 
 	pools[0].getConnection(function(err,connection) {
 		connection.query(queryString, [key], function (err, rows, fields) {
@@ -573,7 +572,7 @@ app.get('/project/:project_id/errors_tranding', function(req, res){
 	var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
 		'from error ' +
 		'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
-		'order by rank desc, numofinstances desc limit 15';
+		'order by (case rank when 2 then 1 when 3 then 2 when 1 then 3 when 0 then 4 else 9 end), numofinstances desc limit 15';
 
 	pools[0].getConnection(function(err,connection) {
 		connection.query(queryString, [key], function (err, rows, fields) {
@@ -645,7 +644,7 @@ app.get('/project/:project_id/errors_latest', function(req, res){
 	var queryString = 'select id, rank, numofinstances, errorname, errorclassname, linenum, status, DATE_FORMAT(update_date,\'%Y-%m-%d\') as update_date ' +
 		'from error ' +
 		'where project_id = ? and (status = 0 or status = 1) and update_date >= now() - interval 1 week ' +
-		'order by update_date desc, rank desc, numofinstances desc limit 15';
+		'order by update_date desc, (case rank when 2 then 1 when 3 then 2 when 1 then 3 when 0 then 4 else 9 end), numofinstances desc limit 15';
 	pools[0].getConnection(function(err,connection) {
 		connection.query(queryString, [key], function (err, rows, fields) {
 			if (err){
@@ -1808,7 +1807,7 @@ app.post('/project/:project_id/errors/filtered', function(req, res){
     }else{
         queryString += 'and date(update_date) >= date(now()) ';
     }
-    queryString += 'order by rank desc, status desc, numofinstances desc limit 50';
+    queryString += 'order by (case rank when 2 then 1 when 3 then 2 when 1 then 3 when 0 then 4 else 9 end), status desc, numofinstances desc limit 50';
     // query 실행
 
     console.log(queryString);
@@ -2003,7 +2002,7 @@ app.post('/project/:project_id/errors/filtered/latest', function(req, res){
     }else{
         queryString += 'and date(update_date) >= date(now()) ';
     }
-    queryString += 'order by update_date desc, rank desc, numofinstances desc limit 50';
+    queryString += 'order by update_date desc, (case rank when 2 then 1 when 3 then 2 when 1 then 3 when 0 then 4 else 9 end), numofinstances desc limit 50';
     // query 실행
 
     console.log(queryString);
@@ -2113,6 +2112,7 @@ app.post('/project/add', function(req, res){
 		});
     }
 });
+
 
 app.post('/project/:project_id/errors_filtered', function(req, res){
     var key = req.params.project_id;
